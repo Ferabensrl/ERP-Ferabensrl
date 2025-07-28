@@ -99,15 +99,9 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
         console.log('🚨 Productos stock crítico:', productosStockCritico)
 
         // 📊 TOP 10 productos más vendidos
-        const { data: pedидosItems, error: pedidosError } = await supabase
-          .from('pedidos_items')
-          .select(`
-            codigo_producto,
-            cantidad,
-            inventario:codigo_producto (
-              descripcion
-            )
-          `)
+        const { data: pedidoItems, error: pedidosError } = await supabase
+          .from('pedido_items')
+          .select('codigo_producto, cantidad_pedida')
 
         if (pedidosError) {
           console.error('❌ Error obteniendo pedidos:', pedidosError)
@@ -115,19 +109,21 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
 
         let productosMasVendidos: ProductoMasVendido[] = []
         
-        if (pedидosItems && pedидosItems.length > 0) {
+        if (pedidoItems && pedidoItems.length > 0) {
           // Agrupar por código de producto y sumar cantidades
-          const ventasPorProducto = pedidosItems.reduce((acc: Record<string, any>, item) => {
+          const ventasPorProducto = pedidoItems.reduce((acc: Record<string, any>, item) => {
             const codigo = item.codigo_producto
             if (!acc[codigo]) {
+              // Buscar descripción en productos ya cargados
+              const producto = productos?.find(p => p.codigo_producto === codigo)
               acc[codigo] = {
                 codigo_producto: codigo,
-                descripcion: item.inventario?.descripcion || 'Sin descripción',
+                descripcion: producto?.descripcion || 'Sin descripción',
                 total_vendido: 0,
                 veces_vendido: 0
               }
             }
-            acc[codigo].total_vendido += item.cantidad || 0
+            acc[codigo].total_vendido += item.cantidad_pedida || 0
             acc[codigo].veces_vendido += 1
             return acc
           }, {})
