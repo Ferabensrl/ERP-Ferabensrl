@@ -195,174 +195,181 @@ const Scanner: React.FC = () => {
     }
   };
 
-  // ✅ SCANNER NATIVO SAMSUNG - SOLUCIÓN ALTERNATIVA MÁXIMA COMPATIBILIDAD
+  // 🚀 SCANNER PROFESIONAL SAMSUNG S23 - VERSIÓN DEFINITIVA
   const iniciarEscaner = async () => {
     try {
       setScannerError(null);
       setShowCamera(true);
       setIsScanning(true);
       
-      console.log('🔍 Iniciando scanner nativo para Samsung...');
+      console.log('🔍 Iniciando scanner profesional para Samsung S23...');
 
-      // ✅ SOLUCIÓN 1: Scanner nativo del navegador
+      // ✅ VERIFICAR PERMISOS PRIMERO
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Tu navegador no soporta acceso a cámara.');
+      }
+
+      // ✅ SOLICITAR PERMISOS EXPLÍCITAMENTE
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { 
-            facingMode: 'environment',
-            // ✅ Configuración específica para Samsung S23
-            width: { min: 640, ideal: 1280, max: 1920 },
-            height: { min: 480, ideal: 720, max: 1080 }
-          } 
+        console.log('📷 Verificando permisos de cámara...');
+        const testStream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' } 
         });
-
-        const videoElement = document.createElement('video');
-        videoElement.srcObject = stream;
-        videoElement.style.width = '100%';
-        videoElement.style.height = '100%';
-        videoElement.style.objectFit = 'cover';
-        videoElement.autoplay = true;
-        videoElement.playsInline = true; // ✅ Importante para Samsung
-
-        const readerDiv = document.getElementById('qr-reader');
-        if (readerDiv) {
-          readerDiv.innerHTML = '';
-          readerDiv.appendChild(videoElement);
-          
-          // ✅ Agregar botón manual para ingreso de código
-          const inputDiv = document.createElement('div');
-          inputDiv.style.position = 'absolute';
-          inputDiv.style.bottom = '20px';
-          inputDiv.style.left = '50%';
-          inputDiv.style.transform = 'translateX(-50%)';
-          inputDiv.style.display = 'flex';
-          inputDiv.style.gap = '10px';
-          
-          const input = document.createElement('input');
-          input.type = 'text';
-          input.placeholder = 'Ingresa código manualmente';
-          input.style.padding = '10px';
-          input.style.borderRadius = '6px';
-          input.style.border = '2px solid white';
-          input.style.fontSize = '16px';
-          
-          const button = document.createElement('button');
-          button.textContent = 'Buscar';
-          button.style.padding = '10px 20px';
-          button.style.backgroundColor = '#10b981';
-          button.style.color = 'white';
-          button.style.border = 'none';
-          button.style.borderRadius = '6px';
-          button.style.fontSize = '16px';
-          
-          button.onclick = async () => {
-            const codigo = input.value.trim();
-            if (codigo) {
-              setLastScannedCode(codigo);
-              const producto = await buscarProducto(codigo);
-              setProductoEncontrado(producto);
-              detenerEscaner();
-            }
-          };
-          
-          inputDiv.appendChild(input);
-          inputDiv.appendChild(button);
-          readerDiv.appendChild(inputDiv);
-        }
-
-        videoElement.onloadedmetadata = () => {
-          videoElement.play();
-          console.log('✅ Video stream activo para Samsung S23');
-        };
-
-        scannerRef.current = { stream };
-
-      } catch (error) {
-        console.error('❌ Error con scanner nativo:', error);
-        
-        // ✅ FALLBACK: Input manual como solución principal
-        const readerDiv = document.getElementById('qr-reader');
-        if (readerDiv) {
-          readerDiv.innerHTML = `
-            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background: #f8fafc; border: 2px dashed #3b82f6; border-radius: 12px;">
-              <div style="font-size: 48px; margin-bottom: 16px;">📱</div>
-              <h3 style="color: #1f2937; margin: 0 0 16px 0; text-align: center;">Scanner Manual</h3>
-              <p style="color: #6b7280; text-align: center; margin: 0 0 20px 0;">Ingresa el código de barras manualmente</p>
-              <div style="display: flex; gap: 8px; width: 100%; max-width: 300px; padding: 0 20px;">
-                <input 
-                  id="manual-code-input" 
-                  type="text" 
-                  placeholder="Código EAN13..." 
-                  style="flex: 1; padding: 12px; border: 2px solid #d1d5db; border-radius: 6px; font-size: 16px;"
-                />
-                <button 
-                  id="manual-search-btn"
-                  style="padding: 12px 16px; background: #10b981; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer;"
-                >
-                  Buscar
-                </button>
-              </div>
-            </div>
-          `;
-          
-          const input = document.getElementById('manual-code-input') as HTMLInputElement;
-          const button = document.getElementById('manual-search-btn') as HTMLButtonElement;
-          
-          const handleSearch = async () => {
-            const codigo = input.value.trim();
-            if (codigo) {
-              setLastScannedCode(codigo);
-              const producto = await buscarProducto(codigo);
-              setProductoEncontrado(producto);
-              if (!producto) {
-                setNuevoProducto(prev => ({ ...prev, codigo_barras: codigo }));
-              }
-              detenerEscaner();
-            }
-          };
-          
-          button.onclick = handleSearch;
-          input.onkeypress = (e) => {
-            if (e.key === 'Enter') handleSearch();
-          };
-          
-          // Enfocar automáticamente
-          setTimeout(() => input.focus(), 100);
-        }
+        testStream.getTracks().forEach(track => track.stop());
+        console.log('✅ Permisos de cámara confirmados');
+      } catch (permissionError) {
+        console.error('❌ Error de permisos:', permissionError);
+        throw new Error('Se necesitan permisos de cámara para usar el scanner.');
       }
       
+      // ✅ IMPORTAR html5-qrcode LIBRERÍA PROFESIONAL
+      const { Html5QrcodeScanner } = await import('html5-qrcode');
+      
+      // 🎯 CONFIGURACIÓN OPTIMIZADA PARA SAMSUNG S23 + CÓDIGOS DE BARRAS
+      const scanner = new Html5QrcodeScanner(
+        "qr-reader",
+        {
+          // ✅ CONFIGURACIÓN PROFESIONAL PARA CÓDIGOS DE BARRAS
+          fps: 10, // Velocidad óptima para Samsung S23
+          qrbox: { 
+            width: isMobile ? 280 : 320, 
+            height: isMobile ? 120 : 140  // ✅ RECTÁNGULO para códigos de barras
+          },
+          aspectRatio: isMobile ? 2.3 : 2.3, // ✅ Ratio perfecto para EAN13
+          
+          // ✅ TIPOS DE CÓDIGOS SOPORTADOS
+          supportedScanTypes: [
+            0, // QR Code
+            1, // Data Matrix  
+            2, // UPC-A
+            3, // UPC-E
+            4, // EAN-8
+            5, // EAN-13 ← TU PRINCIPAL
+            6, // Code-39
+            7, // Code-93
+            8, // Code-128
+            9, // ITF (Interleaved 2 of 5)
+            10, // RSS-14
+            11, // RSS-Expanded
+          ],
+          
+          // ✅ CONFIGURACIONES AVANZADAS SAMSUNG S23
+          rememberLastUsedCamera: true,
+          showTorchButtonIfSupported: true, // Flash si está disponible
+          showZoomSliderIfSupported: false, // No zoom para evitar problemas
+          useBarCodeDetectorIfSupported: true, // ✅ API nativa de detección
+          
+          // ✅ CONFIGURACIÓN DE VIDEO ESPECÍFICA SAMSUNG S23
+          videoConstraints: {
+            facingMode: "environment",
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 },
+            // ✅ CONFIGURACIONES AVANZADAS PARA ENFOQUE
+            focusMode: "continuous",
+            whiteBalanceMode: "continuous",
+            exposureMode: "continuous"
+          },
+          
+          // ✅ CONFIGURACIONES ADICIONALES
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true
+          }
+        },
+        false // No verbose para mejor rendimiento
+      );
+      
+      scannerRef.current = scanner;
+      
+      scanner.render(
+        async (decodedText: string) => {
+          // ✅ CÓDIGO ESCANEADO EXITOSAMENTE
+          console.log('🎯 Código detectado:', decodedText);
+          
+          setLastScannedCode(decodedText);
+          
+          // Agregar al historial
+          const nuevoHistorial: HistorialEscaneo = {
+            codigo_barras: decodedText,
+            timestamp: new Date(),
+            accion: 'encontrado'
+          };
+          
+          // ✅ BUSCAR PRODUCTO INMEDIATAMENTE
+          const producto = await buscarProducto(decodedText);
+          
+          if (producto) {
+            setProductoEncontrado(producto);
+            
+            // Agregar a productos escaneados
+            setProductosEscaneados(prev => {
+              const existe = prev.find(p => p.codigo_barras === decodedText || p.codigo_producto === decodedText);
+              if (!existe) {
+                return [producto, ...prev.slice(0, 9)];
+              }
+              return prev;
+            });
+            
+            nuevoHistorial.accion = 'encontrado';
+            nuevoHistorial.producto = producto;
+            
+            // ✅ FEEDBACK VISUAL + SONORO
+            navigator.vibrate && navigator.vibrate([100]); // Vibración en móvil
+            
+          } else {
+            setProductoEncontrado(null);
+            nuevoHistorial.accion = 'no_encontrado';
+            
+            // Pre-cargar para alta rápida
+            setNuevoProducto(prev => ({
+              ...prev,
+              codigo_barras: decodedText
+            }));
+            
+            // Vibración diferente para "no encontrado"
+            navigator.vibrate && navigator.vibrate([50, 50, 50]);
+          }
+          
+          setHistorialEscaneos(prev => [nuevoHistorial, ...prev.slice(0, 19)]);
+          
+          // ✅ NO DETENER AUTOMÁTICAMENTE - Permitir múltiples escaneos
+          // detenerEscaner();
+          
+        },
+        (errorMessage: string) => {
+          // Errores normales de escaneo - no mostrar al usuario
+          if (!errorMessage.includes('NotFoundException')) {
+            console.log('Scanner info:', errorMessage);
+          }
+        }
+      );
+      
     } catch (error) {
-      console.error('Error general iniciando escáner:', error);
-      setScannerError('Error activando cámara. Usa el input manual.');
+      console.error('❌ Error iniciando escáner:', error);
+      setScannerError(`Error: ${error}`);
       setShowCamera(false);
       setIsScanning(false);
     }
   };
 
-  // ✅ DETENER ESCÁNER ACTUALIZADO
+  // ✅ DETENER ESCÁNER PROFESIONAL
   const detenerEscaner = () => {
     try {
       if (scannerRef.current) {
-        // Si es el nuevo scanner nativo
-        if (scannerRef.current.stream) {
-          scannerRef.current.stream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
-        }
-        // Si es el scanner anterior
-        else if (scannerRef.current.clear) {
+        // ✅ LIMPIAR html5-qrcode scanner
+        if (scannerRef.current.clear) {
           scannerRef.current.clear();
         }
         scannerRef.current = null;
       }
       
-      // Limpiar el div del scanner
-      const readerDiv = document.getElementById('qr-reader');
-      if (readerDiv) {
-        readerDiv.innerHTML = '';
-      }
-      
       setShowCamera(false);
       setIsScanning(false);
+      console.log('🔴 Scanner detenido');
     } catch (error) {
-      console.log('Error deteniendo escáner:', error);
+      console.log('Info deteniendo escáner:', error);
+      // Forzar limpieza
+      setShowCamera(false);
+      setIsScanning(false);
     }
   };
 
