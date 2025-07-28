@@ -225,6 +225,17 @@ const Scanner: React.FC = () => {
       // ✅ IMPORTAR html5-qrcode LIBRERÍA PROFESIONAL
       const { Html5QrcodeScanner } = await import('html5-qrcode');
       
+      // ✅ ESPERAR A QUE EL DOM ESTÉ LISTO
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // ✅ VERIFICAR QUE EL ELEMENTO EXISTE
+      const readerElement = document.getElementById('qr-reader');
+      if (!readerElement) {
+        throw new Error('Elemento scanner no encontrado. Recarga la página.');
+      }
+      
+      console.log('✅ Elemento qr-reader encontrado, iniciando scanner...');
+      
       // 🎯 CONFIGURACIÓN OPTIMIZADA PARA SAMSUNG S23 + CÓDIGOS DE BARRAS
       const scanner = new Html5QrcodeScanner(
         "qr-reader",
@@ -913,21 +924,27 @@ marginRight: 'auto'
               position: 'relative',
               overflow: 'hidden'
             }}>
-              {showCamera ? (
-                <div id="qr-reader" style={{ width: '100%', height: '100%' }}>
-                  {/* El escáner se renderiza aquí */}
-                </div>
-              ) : (
-                <div>
-                  <Camera size={isMobile ? 48 : 64} style={{ color: '#6b7280', marginBottom: '12px' }} />
-                  <p style={{ margin: 0, color: '#6b7280', fontSize: isMobile ? '14px' : '16px' }}>
-                    Scanner con Cámara (Opcional)
-                  </p>
-                  <p style={{ margin: '6px 0 0 0', color: '#9ca3af', fontSize: '12px' }}>
-                    Si no funciona, usa el ingreso manual ↑
-                  </p>
-                </div>
-              )}
+              {/* ✅ CONTENEDOR DEL SCANNER SIEMPRE PRESENTE */}
+              <div id="qr-reader" style={{ 
+                width: '100%', 
+                height: '100%',
+                display: showCamera ? 'block' : 'flex',
+                alignItems: showCamera ? 'initial' : 'center',
+                justifyContent: showCamera ? 'initial' : 'center'
+              }}>
+                {/* ✅ CONTENIDO CUANDO NO HAY SCANNER ACTIVO */}
+                {!showCamera && (
+                  <div style={{ textAlign: 'center' }}>
+                    <Camera size={isMobile ? 48 : 64} style={{ color: '#6b7280', marginBottom: '12px' }} />
+                    <p style={{ margin: 0, color: '#6b7280', fontSize: isMobile ? '14px' : '16px' }}>
+                      Scanner con Cámara (Opcional)
+                    </p>
+                    <p style={{ margin: '6px 0 0 0', color: '#9ca3af', fontSize: '12px' }}>
+                      Si no funciona, usa el ingreso manual ↑
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* ERROR DEL ESCÁNER */}
