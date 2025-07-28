@@ -6,7 +6,7 @@ import Dashboard from './components/Dashboard'
 import Pedidos from './components/Pedidos/Pedidos'
 import WhatsAppConverter from './components/WhatsApp/WhatsAppConverter'
 import Inventario from './components/Inventario/Inventario'
-import Scanner from './components/Scanner/Scanner'
+import ScannerMultiEngine from './components/Scanner/ScannerMultiEngine'
 import Facturacion from './components/Facturacion/Facturacion'
 import DashboardSupabase from './components/Dashboard/DashboardSupabase'
 
@@ -106,7 +106,7 @@ function App() {
       case 'inventario':
         return <Inventario />
       case 'scanner':
-        return <Scanner />
+        return <ScannerMultiEngine />
       case 'facturacion':
         return (
           <Facturacion 
