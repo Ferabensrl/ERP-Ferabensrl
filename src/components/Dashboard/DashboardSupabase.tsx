@@ -74,7 +74,7 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
         // Obtener estadísticas de productos - CORREGIDO para tu estructura
         const { data: productos, error } = await supabase
           .from('inventario')
-          .select('codigo_producto, descripcion, stock, precio_venta, stock_minimo, activo')
+          .select('codigo_producto, descripcion, stock, precio_venta, precio_costo, stock_minimo, activo')
         
         if (error) {
           console.error('❌ Error de Supabase:', error)
@@ -156,9 +156,15 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
         }
 
         // 💰 RENTABILIDAD: Productos con mejor margen bruto
+        console.log('🔍 DEBUG - Total productos activos:', productosActivos.length)
+        console.log('🔍 DEBUG - Muestra primeros 3 productos:', productosActivos.slice(0, 3))
+        
         const productosConCosto = productosActivos.filter(p => 
           p.precio_costo != null && p.precio_costo > 0 && p.precio_venta > 0
         )
+        
+        console.log('🔍 DEBUG - Productos con costo > 0:', productosConCosto.length)
+        console.log('🔍 DEBUG - Muestra primeros 3 con costo:', productosConCosto.slice(0, 3))
         
         const productosRentables = productosConCosto
           .map(p => {
@@ -166,6 +172,8 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
             const precioCosto = p.precio_costo || 0
             const margenBruto = precioVenta - precioCosto
             const porcentajeGanancia = precioCosto > 0 ? ((margenBruto / precioCosto) * 100) : 0
+            
+            console.log(`🔍 DEBUG - Producto ${p.codigo_producto}: venta=${precioVenta}, costo=${precioCosto}, ganancia=${porcentajeGanancia}%`)
             
             return {
               codigo_producto: p.codigo_producto,
@@ -951,7 +959,7 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
             marginBottom: '16px',
             textAlign: 'center'
           }}>
-            📊 Estado del Inventario
+            📊 Distribución de Productos
           </h4>
           
           <div style={{ textAlign: 'center' }}>
