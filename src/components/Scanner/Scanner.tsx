@@ -245,23 +245,20 @@ const Scanner: React.FC = () => {
       // Importar dinámicamente html5-qrcode
       const { Html5QrcodeScanner } = await import('html5-qrcode');
       
-      // ✅ MEJORADO: Configuración más robusta
+      // ✅ CONFIGURACIÓN MÓVIL MEJORADA - Más compatible
       const scanner = new Html5QrcodeScanner(
         "qr-reader",
         {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
+          fps: 5, // ✅ Reducido para móviles
+          qrbox: { width: 200, height: 200 }, // ✅ Más pequeño para móviles
           aspectRatio: 1.0,
           supportedScanTypes: [1], // Solo códigos de barras
-          // ✅ NUEVAS CONFIGURACIONES para mejor compatibilidad
-          rememberLastUsedCamera: true,
-          showTorchButtonIfSupported: true,
-          showZoomSliderIfSupported: true,
-          defaultZoomValueIfSupported: 2,
+          // ✅ CONFIGURACIÓN SIMPLIFICADA para mejor compatibilidad móvil
+          rememberLastUsedCamera: false,
+          showTorchButtonIfSupported: false,
+          showZoomSliderIfSupported: false,
           videoConstraints: {
-            facingMode: "environment", // Cámara trasera preferida
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
+            facingMode: "environment" // Solo cámara trasera, sin resolución específica
           }
         },
         false
