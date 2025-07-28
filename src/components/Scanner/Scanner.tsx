@@ -776,7 +776,7 @@ marginRight: 'auto'
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
         marginBottom: isMobile ? '16px' : '20px'
       }}>
-        {/* MODO ESCANEAR */}
+        {/* MODO ESCANEAR - HÍBRIDO MANUAL + CÁMARA */}
         {modoOperacion === 'escanear' && (
           <div style={{ textAlign: 'center' }}>
             <h3 style={{ 
@@ -785,20 +785,124 @@ marginRight: 'auto'
               fontWeight: '600', 
               color: '#1f2937' 
             }}>
-              📷 Escáner de Códigos EAN13
+              📱 Scanner EAN13 Profesional
             </h3>
 
-            {/* ÁREA DE ESCANEO */}
+            {/* ✅ SCANNER MANUAL PRINCIPAL - SIEMPRE VISIBLE */}
+            <div style={{
+              backgroundColor: '#f0f9ff',
+              border: '2px solid #3b82f6',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '20px'
+            }}>
+              <h4 style={{ 
+                margin: '0 0 16px 0', 
+                fontSize: '18px', 
+                color: '#1e40af',
+                fontWeight: '600'
+              }}>
+                🎯 Ingreso Manual de Código
+              </h4>
+              
+              <div style={{ 
+                display: 'flex', 
+                gap: '8px', 
+                maxWidth: '400px', 
+                margin: '0 auto',
+                flexDirection: isMobile ? 'column' : 'row'
+              }}>
+                <input
+                  type="text"
+                  placeholder="Código EAN13 o código producto..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && buscarManual()}
+                  style={{
+                    flex: 1,
+                    padding: isMobile ? '16px' : '14px',
+                    border: '2px solid #3b82f6',
+                    borderRadius: '8px',
+                    fontSize: isMobile ? '16px' : '14px',
+                    outline: 'none',
+                    textAlign: 'center',
+                    fontWeight: '600'
+                  }}
+                  autoFocus
+                />
+                <button
+                  onClick={buscarManual}
+                  disabled={!searchTerm.trim() || loading}
+                  style={{
+                    padding: isMobile ? '16px 24px' : '14px 20px',
+                    backgroundColor: (!searchTerm.trim() || loading) ? '#9ca3af' : '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: isMobile ? '16px' : '14px',
+                    fontWeight: '600',
+                    cursor: (!searchTerm.trim() || loading) ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    minWidth: isMobile ? '100%' : '120px'
+                  }}
+                >
+                  {loading ? (
+                    <>
+                      <div style={{
+                        width: '16px',
+                        height: '16px',
+                        border: '2px solid white',
+                        borderTop: '2px solid transparent',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }} />
+                      Buscando...
+                    </>
+                  ) : (
+                    <>
+                      <Search size={16} />
+                      BUSCAR
+                    </>
+                  )}
+                </button>
+              </div>
+              
+              <p style={{ 
+                margin: '12px 0 0 0', 
+                color: '#1e40af', 
+                fontSize: '14px',
+                fontStyle: 'italic'
+              }}>
+                💡 Escribe el código y presiona Enter o toca Buscar
+              </p>
+            </div>
+
+            {/* SEPARADOR */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              margin: '20px 0',
+              color: '#6b7280'
+            }}>
+              <div style={{ flex: 1, height: '1px', backgroundColor: '#d1d5db' }}></div>
+              <span style={{ padding: '0 16px', fontSize: '14px', fontWeight: '500' }}>O</span>
+              <div style={{ flex: 1, height: '1px', backgroundColor: '#d1d5db' }}></div>
+            </div>
+
+            {/* ÁREA DE ESCANEO CON CÁMARA - SECUNDARIA */}
             <div style={{
               width: isMobile ? '280px' : '320px',
-              height: isMobile ? '280px' : '320px',
+              height: isMobile ? '200px' : '240px',
               margin: '0 auto 24px',
-              border: showCamera ? 'none' : '3px dashed #3b82f6',
+              border: showCamera ? 'none' : '2px dashed #6b7280',
               borderRadius: '12px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: showCamera ? '#000' : '#f8fafc',
+              backgroundColor: showCamera ? '#000' : '#f9fafb',
               position: 'relative',
               overflow: 'hidden'
             }}>
@@ -808,12 +912,12 @@ marginRight: 'auto'
                 </div>
               ) : (
                 <div>
-                  <Camera size={isMobile ? 64 : 80} style={{ color: '#3b82f6', marginBottom: '16px' }} />
-                  <p style={{ margin: 0, color: '#6b7280', fontSize: isMobile ? '16px' : '18px' }}>
-                    Toca para activar cámara
+                  <Camera size={isMobile ? 48 : 64} style={{ color: '#6b7280', marginBottom: '12px' }} />
+                  <p style={{ margin: 0, color: '#6b7280', fontSize: isMobile ? '14px' : '16px' }}>
+                    Scanner con Cámara (Opcional)
                   </p>
-                  <p style={{ margin: '8px 0 0 0', color: '#9ca3af', fontSize: '14px' }}>
-                    EAN13 • Compatible con todos los códigos
+                  <p style={{ margin: '6px 0 0 0', color: '#9ca3af', fontSize: '12px' }}>
+                    Si no funciona, usa el ingreso manual ↑
                   </p>
                 </div>
               )}
