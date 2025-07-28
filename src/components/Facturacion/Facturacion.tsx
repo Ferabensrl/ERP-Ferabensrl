@@ -48,6 +48,7 @@ interface ProductoFacturacion {
   variantes?: VarianteProductoFacturacion[];
   productoBase?: string;
   cantidadPreparada?: number;
+  cantidadOriginalPreparada?: number; // ✅ CANTIDAD ORIGINAL PARA CALCULAR DIFERENCIAS
   descripcion?: string; // ✅ AGREGAR ESTO
 }
 
@@ -168,7 +169,8 @@ const Facturacion: React.FC<FacturacionProps> = ({
                 }))
               : undefined,
               productoBase: producto.productoBase,
-              cantidadPreparada: cantidadTotal
+              cantidadPreparada: cantidadTotal, // ✅ CANTIDAD ORIGINAL PREPARADA EN DEPÓSITO
+              cantidadOriginalPreparada: cantidadTotal // ✅ BACKUP para cálculo de diferencias
             };
           }),
           // ✅ CORRECCIÓN 3: Calcular total real basado en cantidades preparadas
@@ -266,8 +268,27 @@ const Facturacion: React.FC<FacturacionProps> = ({
     setVistaActual('configurar');
   };
 
-  // ✅ NUEVA FUNCIÓN: Editar cantidad de producto
-  const editarCantidadProducto = (pedidoId: string, productoId: string, nuevaCantidad: number) => {
+  // ✅ NUEVA FUNCIÓN: Editar cantidad de producto CON AJUSTE DE INVENTARIO
+  const editarCantidadProducto = async (pedidoId: string, productoId: string, nuevaCantidad: number) => {
+    // Encontrar el producto y su cantidad original preparada
+    const pedido = pedidosSeleccionados.find(p => p.id === pedidoId);
+    const producto = pedido?.productos.find(p => p.id === productoId);
+    
+    if (!producto) {
+      console.error('❌ Producto no encontrado para ajuste de inventario');
+      return;
+    }
+
+    const cantidadOriginalPreparada = producto.cantidadOriginalPreparada || producto.cantidadPreparada || producto.cantidad;
+    const nuevaCantidadFinal = Math.max(0, nuevaCantidad);
+    const diferencia = cantidadOriginalPreparada - nuevaCantidadFinal;
+
+    console.log(`🔄 Ajustando inventario: ${producto.codigo}`);
+    console.log(`   • Cantidad original preparada: ${cantidadOriginalPreparada}`);
+    console.log(`   • Nueva cantidad a facturar: ${nuevaCantidadFinal}`);
+    console.log(`   • Diferencia a devolver al stock: ${diferencia}`);
+
+    // Actualizar el estado local primero
     setPedidosSeleccionados(pedidos =>
       pedidos.map(pedido =>
         pedido.id === pedidoId
@@ -275,13 +296,46 @@ const Facturacion: React.FC<FacturacionProps> = ({
               ...pedido,
               productos: pedido.productos.map(prod =>
                 prod.id === productoId
-                  ? { ...prod, cantidad: Math.max(0, nuevaCantidad) }
+                  ? { ...prod, cantidad: nuevaCantidadFinal }
                   : prod
               )
             }
           : pedido
       )
     );
+
+    // Si hay diferencia positiva, devolver stock al inventario
+    if (diferencia > 0) {
+      try {
+        // Importar productosService desde supabaseClient
+        const { productosService } = await import('../../lib/supabaseClient');
+        
+        // Buscar el producto en inventario por código
+        const productoEnInventario = await productosService.getByCodigo(producto.codigo);
+        
+        if (productoEnInventario) {
+          // Devolver la diferencia al stock
+          const nuevoStock = productoEnInventario.stock + diferencia;
+          await productosService.updateStock(productoEnInventario.id, nuevoStock);
+          
+          console.log(`✅ Stock devuelto: ${producto.codigo} | ${productoEnInventario.stock} → ${nuevoStock} (+${diferencia})`);
+          
+          // Mostrar notificación al usuario
+          alert(`✅ Stock ajustado: ${producto.codigo}\n📦 Se devolvieron ${diferencia} unidades al inventario\n📊 Stock actual: ${nuevoStock}`);
+        } else {
+          console.warn(`⚠️ Producto ${producto.codigo} no encontrado en inventario`);
+          alert(`⚠️ No se pudo ajustar el stock de ${producto.codigo} (producto no encontrado en inventario)`);
+        }
+      } catch (error) {
+        console.error('❌ Error ajustando stock:', error);
+        alert(`❌ Error al ajustar el stock de ${producto.codigo}`);
+      }
+    } else if (diferencia < 0) {
+      // Si la diferencia es negativa (se quiere facturar más de lo preparado)
+      const cantidadExceso = Math.abs(diferencia);
+      console.warn(`⚠️ Se intenta facturar ${cantidadExceso} unidades más de las preparadas para ${producto.codigo}`);
+      alert(`⚠️ Atención: Se está facturando ${cantidadExceso} unidades más de las preparadas para ${producto.codigo}`);
+    }
   };
 
   // ✅ NUEVA FUNCIÓN: Editar precio de producto
@@ -1087,10 +1141,29 @@ pedidosSeleccionados.forEach(pedido => {
                       <div style={{ minWidth: '120px' }}>
                         <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
                           {producto.codigo}
+                          {/* ✅ Indicador de ajuste de inventario */}
+                          {producto.cantidadOriginalPreparada && producto.cantidad !== producto.cantidadOriginalPreparada && (
+                            <span style={{
+                              marginLeft: '6px',
+                              backgroundColor: producto.cantidad < producto.cantidadOriginalPreparada ? '#10b981' : '#f59e0b',
+                              color: 'white',
+                              padding: '1px 4px',
+                              borderRadius: '3px',
+                              fontSize: '9px',
+                              fontWeight: '600'
+                            }}>
+                              {producto.cantidad < producto.cantidadOriginalPreparada ? '📦↑' : '⚠️↓'}
+                            </span>
+                          )}
                         </div>
                         <div style={{ fontSize: '12px', color: '#6b7280' }}>
                           {producto.nombre}
                         </div>
+                        {producto.cantidadOriginalPreparada && producto.cantidad !== producto.cantidadOriginalPreparada && (
+                          <div style={{ fontSize: '10px', color: '#6b7280' }}>
+                            🏭 Preparado: {producto.cantidadOriginalPreparada} → 🧾 Facturar: {producto.cantidad}
+                          </div>
+                        )}
                         {producto.codigoBarras && (
                           <div style={{ fontSize: '10px', color: '#9ca3af' }}>
                             📊 {producto.codigoBarras}

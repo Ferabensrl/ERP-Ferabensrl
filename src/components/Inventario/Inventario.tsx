@@ -1345,10 +1345,47 @@ const Inventario: React.FC = () => {
 
            <form 
              style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
-             onSubmit={(e) => {
+             onSubmit={async (e) => {
                e.preventDefault();
-               alert('✅ Función de crear producto implementada!');
-               setMostrarModalNuevo(false);
+               console.log('🚀 CREANDO PRODUCTO - Iniciando...');
+               
+               try {
+                 const formData = new FormData(e.target as HTMLFormElement);
+                 const nuevoProducto = {
+                   codigo_producto: formData.get('codigo_producto') as string,
+                   descripcion: formData.get('descripcion') as string,
+                   categoria: formData.get('categoria') as string,
+                   precio_venta: parseFloat(formData.get('precio_venta') as string) || 0,
+                   precio_costo: parseFloat(formData.get('precio_costo') as string) || 0,
+                   stock: parseInt(formData.get('stock') as string) || 0,
+                   codigo_barras: formData.get('codigo_barras') as string || '',
+                   activo: true
+                 };
+                 
+                 console.log('📋 Datos del producto:', nuevoProducto);
+                 
+                 const { data, error } = await supabase
+                   .from('inventario')
+                   .insert([nuevoProducto])
+                   .select();
+                 
+                 if (error) {
+                   console.error('❌ Error insertando producto:', error);
+                   alert(`❌ Error: ${error.message}`);
+                   return;
+                 }
+                 
+                 console.log('✅ Producto creado exitosamente:', data);
+                 alert('✅ Producto creado exitosamente!');
+                 
+                 // Recargar productos
+                 cargarProductos();
+                 setMostrarModalNuevo(false);
+                 
+               } catch (error) {
+                 console.error('❌ Error:', error);
+                 alert(`❌ Error inesperado: ${error}`);
+               }
              }}
            >
              <div>
@@ -1357,6 +1394,7 @@ const Inventario: React.FC = () => {
                </label>
                <input
                  type="text"
+                 name="codigo_producto"
                  placeholder="Ej: D218, B476..."
                  required
                  style={{
@@ -1375,6 +1413,7 @@ const Inventario: React.FC = () => {
                </label>
                <input
                  type="text"
+                 name="descripcion"
                  placeholder="Ej: PINZA PARA PELO, SET COLITAS..."
                  required
                  style={{
@@ -1393,6 +1432,7 @@ const Inventario: React.FC = () => {
                </label>
 <input
   type="text"
+  name="categoria"
   list="categorias-list"
   placeholder="Escribe o selecciona categoría..."
   required
@@ -1417,6 +1457,7 @@ const Inventario: React.FC = () => {
                </label>
                <input
                  type="text"
+                 name="codigo_barras"
                  placeholder="Ej: 2025050823032 (opcional)"
                  style={{
                    width: '100%',
@@ -1435,6 +1476,7 @@ const Inventario: React.FC = () => {
                  </label>
                  <input
                    type="number"
+                   name="precio_costo"
                    step="0.01"
                    min="0"
                    placeholder="0.00"
@@ -1454,6 +1496,7 @@ const Inventario: React.FC = () => {
                  </label>
                  <input
                    type="number"
+                   name="precio_venta"
                    step="0.01"
                    min="0"
                    placeholder="0.00"
@@ -1475,6 +1518,7 @@ const Inventario: React.FC = () => {
                </label>
                <input
                  type="number"
+                 name="stock"
                  min="0"
                  placeholder="0"
                  style={{

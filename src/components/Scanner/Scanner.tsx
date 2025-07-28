@@ -20,9 +20,9 @@ import {
   Clock,
   ArrowLeft
 } from 'lucide-react';
-import { supabase } from '../../lib/supabaseClient';
+import { productosService } from '../../lib/supabaseClient';
 
-// INTERFACES PARA EL ESCÁNER
+// INTERFACES PARA EL ESCÁNER - ✅ ACTUALIZADAS PARA COINCIDIR CON productosService
 interface ProductoEscaneado {
   id: number;
   codigo_producto: string;
@@ -32,7 +32,7 @@ interface ProductoEscaneado {
   precio_costo?: number;
   stock: number;
   codigo_barras?: string;
-  estado?: 'activo' | 'inactivo';
+  activo: boolean; // ✅ CAMBIO: activo en lugar de estado
   fecha_escaneado: Date;
   accion_realizada?: 'encontrado' | 'actualizado' | 'creado';
 }
@@ -45,7 +45,7 @@ interface ProductoNuevo {
   precio_costo: number;
   stock: number;
   codigo_barras: string;
-  estado: 'activo';
+  activo: boolean; // ✅ CAMBIO: activo boolean en lugar de estado string
 }
 
 interface HistorialEscaneo {
@@ -77,10 +77,10 @@ const Scanner: React.FC = () => {
   const [mostrarModalAlta, setMostrarModalAlta] = useState(false);
   const [mostrarModalStock, setMostrarModalStock] = useState(false);
   
-  // ESTADO PARA ALTA RÁPIDA
+  // ESTADO PARA ALTA RÁPIDA - ✅ ACTUALIZADO
   const [nuevoProducto, setNuevoProducto] = useState<Partial<ProductoNuevo>>({
     codigo_barras: '',
-    estado: 'activo'
+    activo: true
   });
   
   // ESTADO PARA ACTUALIZACIÓN DE STOCK
@@ -137,26 +137,36 @@ const Scanner: React.FC = () => {
     return calculatedChecksum === checksum;
   };
 
-  // BUSCAR PRODUCTO EN SUPABASE
+  // ✅ BUSCAR PRODUCTO USANDO productosService - INTEGRACIÓN COMPLETA
   const buscarProducto = async (codigo: string): Promise<ProductoEscaneado | null> => {
     try {
       setLoading(true);
+      console.log(`🔍 Scanner: Buscando producto con código: "${codigo}"`);
       
-      // Buscar por código de barras primero, luego por código de producto
-      const { data, error } = await supabase
-        .from('inventario')
-        .select('*')
-        .or(`codigo_barras.eq.${codigo},codigo_producto.ilike.%${codigo}%`)
-        .limit(1);
+      // ✅ PRIMERA BÚSQUEDA: Por código de producto usando productosService
+      let producto = await productosService.getByCodigo(codigo);
       
-      if (error) {
-        console.error('Error buscando producto:', error);
-        return null;
+      // ✅ SEGUNDA BÚSQUEDA: Si no se encuentra, buscar por código de barras
+      if (!producto) {
+        console.log(`🔍 Scanner: No encontrado por código, buscando por código de barras...`);
+        
+        // Obtener todos los productos y buscar por código de barras
+        const todosLosProductos = await productosService.getAll();
+        const productoPorBarras = todosLosProductos.find(p => 
+          p.codigo_barras && p.codigo_barras === codigo
+        );
+        
+        if (productoPorBarras) {
+          producto = productoPorBarras;
+          console.log(`✅ Scanner: Producto encontrado por código de barras`);
+        }
+      } else {
+        console.log(`✅ Scanner: Producto encontrado por código de producto`);
       }
       
-      if (data && data.length > 0) {
-        const producto = data[0];
-        return {
+      // ✅ CONVERTIR A FORMATO DEL SCANNER
+      if (producto) {
+        const productoEscaneado: ProductoEscaneado = {
           id: producto.id,
           codigo_producto: producto.codigo_producto,
           descripcion: producto.descripcion,
@@ -165,16 +175,20 @@ const Scanner: React.FC = () => {
           precio_costo: producto.precio_costo,
           stock: producto.stock,
           codigo_barras: producto.codigo_barras,
-          estado: producto.estado || 'activo',
+          activo: producto.activo,
           fecha_escaneado: new Date(),
           accion_realizada: 'encontrado'
         };
+        
+        console.log(`✅ Scanner: Producto convertido para scanner:`, productoEscaneado);
+        return productoEscaneado;
       }
       
+      console.log(`⚠️ Scanner: Producto no encontrado en inventario`);
       return null;
       
     } catch (error) {
-      console.error('Error en búsqueda:', error);
+      console.error('❌ Scanner: Error en búsqueda:', error);
       return null;
     } finally {
       setLoading(false);
@@ -358,7 +372,7 @@ const Scanner: React.FC = () => {
       });
     }
   };
-  // CREAR PRODUCTO NUEVO
+  // ✅ CREAR PRODUCTO NUEVO USANDO SUPABASE DIRECTAMENTE (productosService no tiene función create)
   const crearProductoNuevo = async () => {
     try {
       if (!nuevoProducto.codigo_producto || !nuevoProducto.descripcion || !nuevoProducto.categoria || !nuevoProducto.precio_venta) {
@@ -367,7 +381,9 @@ const Scanner: React.FC = () => {
       }
 
       setLoading(true);
+      console.log(`🆕 Scanner: Creando nuevo producto:`, nuevoProducto);
 
+      // ✅ PRODUCTO CON ESTRUCTURA ACTUALIZADA
       const productoParaInsertar = {
         codigo_producto: nuevoProducto.codigo_producto,
         descripcion: nuevoProducto.descripcion,
@@ -376,9 +392,13 @@ const Scanner: React.FC = () => {
         precio_costo: nuevoProducto.precio_costo || 0,
         stock: nuevoProducto.stock || 0,
         codigo_barras: nuevoProducto.codigo_barras,
-        estado: 'activo'
+        activo: true, // ✅ CAMBIO: activo boolean
+        stock_minimo: 5 // ✅ AGREGAR stock_minimo por defecto
       };
 
+      // ✅ IMPORTAR SUPABASE PARA INSERCIÓN (productosService no tiene create)
+      const { supabase } = await import('../../lib/supabaseClient');
+      
       const { data, error } = await supabase
         .from('inventario')
         .insert([productoParaInsertar])
@@ -386,11 +406,14 @@ const Scanner: React.FC = () => {
         .single();
 
       if (error) {
-        console.error('Error creando producto:', error);
+        console.error('❌ Scanner: Error creando producto:', error);
         alert(`❌ Error: ${error.message}`);
         return;
       }
 
+      console.log(`✅ Scanner: Producto creado exitosamente:`, data);
+
+      // ✅ CONVERTIR A FORMATO DEL SCANNER
       const nuevoProductoCreado: ProductoEscaneado = {
         id: data.id,
         codigo_producto: data.codigo_producto,
@@ -400,7 +423,7 @@ const Scanner: React.FC = () => {
         precio_costo: data.precio_costo,
         stock: data.stock,
         codigo_barras: data.codigo_barras,
-        estado: data.estado,
+        activo: data.activo,
         fecha_escaneado: new Date(),
         accion_realizada: 'creado'
       };
@@ -411,21 +434,23 @@ const Scanner: React.FC = () => {
       // Limpiar formulario
       setNuevoProducto({
         codigo_barras: '',
-        estado: 'activo'
+        activo: true
       });
 
       setMostrarModalAlta(false);
-      alert('✅ Producto creado exitosamente!');
+      
+      // ✅ NOTIFICACIÓN MEJORADA
+      alert(`✅ Producto creado exitosamente!\n\n📦 Código: ${data.codigo_producto}\n🏷️ Descripción: ${data.descripcion}\n💰 Precio: $${data.precio_venta}\n📊 Stock inicial: ${data.stock}`);
 
     } catch (error) {
-      console.error('Error:', error);
+      console.error('❌ Scanner: Error inesperado creando producto:', error);
       alert('❌ Error inesperado creando producto');
     } finally {
       setLoading(false);
     }
   };
 
-  // ACTUALIZAR STOCK
+  // ✅ ACTUALIZAR STOCK USANDO productosService - INTEGRACIÓN COMPLETA
   const actualizarStock = async () => {
     if (!productoEncontrado || !stockUpdate.cantidad || stockUpdate.cantidad <= 0) {
       alert('❌ Ingresa una cantidad válida');
@@ -434,24 +459,20 @@ const Scanner: React.FC = () => {
 
     try {
       setLoading(true);
+      console.log(`🔄 Scanner: Actualizando stock para producto ${productoEncontrado.codigo_producto}`);
 
+      const stockAnterior = productoEncontrado.stock;
       const nuevoStock = stockUpdate.tipo === 'entrada' 
-        ? productoEncontrado.stock + stockUpdate.cantidad
-        : Math.max(0, productoEncontrado.stock - stockUpdate.cantidad);
+        ? stockAnterior + stockUpdate.cantidad
+        : Math.max(0, stockAnterior - stockUpdate.cantidad);
 
-      const { error } = await supabase
-        .from('inventario')
-        .update({ 
-          stock: nuevoStock,
-          fecha_actualizacion: new Date().toISOString()
-        })
-        .eq('id', productoEncontrado.id);
+      console.log(`📦 Scanner: ${stockUpdate.tipo} de ${stockUpdate.cantidad} unidades`);
+      console.log(`📊 Scanner: Stock ${stockAnterior} → ${nuevoStock}`);
 
-      if (error) {
-        console.error('Error actualizando stock:', error);
-        alert(`❌ Error: ${error.message}`);
-        return;
-      }
+      // ✅ USAR productosService.updateStock en lugar de consulta directa
+      await productosService.updateStock(productoEncontrado.id, nuevoStock);
+
+      console.log(`✅ Scanner: Stock actualizado exitosamente en Supabase`);
 
       // Actualizar producto local
       const productoActualizado = {
@@ -479,11 +500,13 @@ const Scanner: React.FC = () => {
       });
 
       setMostrarModalStock(false);
-      alert(`✅ Stock actualizado! Nuevo stock: ${nuevoStock}`);
+      
+      // ✅ NOTIFICACIÓN MEJORADA CON DETALLES
+      alert(`✅ Stock actualizado exitosamente!\n\n📦 Producto: ${productoEncontrado.codigo_producto}\n🔄 ${stockUpdate.tipo === 'entrada' ? 'Entrada' : 'Salida'}: ${stockUpdate.cantidad} unidades\n📊 Stock anterior: ${stockAnterior}\n📊 Stock nuevo: ${nuevoStock}${stockUpdate.motivo ? `\n📝 Motivo: ${stockUpdate.motivo}` : ''}`);
 
     } catch (error) {
-      console.error('Error:', error);
-      alert('❌ Error inesperado actualizando stock');
+      console.error('❌ Scanner: Error actualizando stock:', error);
+      alert(`❌ Error actualizando stock: ${error}`);
     } finally {
       setLoading(false);
     }
@@ -499,23 +522,29 @@ const Scanner: React.FC = () => {
     setScannerError(null);
   };
 
-  // OBTENER CATEGORÍAS PARA SELECTS
+  // ✅ OBTENER CATEGORÍAS USANDO productosService
   const [categorias, setCategorias] = useState<string[]>(['Accesorios para pelo', 'Billeteras de dama', 'Reloj hombre']);
 
   useEffect(() => {
     const cargarCategorias = async () => {
       try {
-        const { data } = await supabase
-          .from('inventario')
-          .select('categoria')
-          .not('categoria', 'is', null);
+        console.log('📂 Scanner: Cargando categorías...');
         
-        if (data) {
-          const categoriasUnicas = Array.from(new Set(data.map(item => item.categoria)));
+        // ✅ USAR productosService.getAll en lugar de consulta directa
+        const productos = await productosService.getAll();
+        
+        if (productos) {
+          const categoriasUnicas = Array.from(new Set(
+            productos
+              .map(producto => producto.categoria)
+              .filter(categoria => categoria && categoria.trim() !== '')
+          ));
+          
           setCategorias(categoriasUnicas);
+          console.log(`✅ Scanner: ${categoriasUnicas.length} categorías cargadas:`, categoriasUnicas);
         }
       } catch (error) {
-        console.log('Error cargando categorías:', error);
+        console.error('❌ Scanner: Error cargando categorías:', error);
       }
     };
     
@@ -1194,13 +1223,13 @@ marginRight: 'auto'
                <div style={{ marginTop: '4px' }}>
                  <span style={{
                    padding: '6px 12px',
-                   backgroundColor: (productoEncontrado.estado === 'inactivo') ? '#fef2f2' : '#dcfce7',
-                   color: (productoEncontrado.estado === 'inactivo') ? '#dc2626' : '#166534',
+                   backgroundColor: !productoEncontrado.activo ? '#fef2f2' : '#dcfce7',
+                   color: !productoEncontrado.activo ? '#dc2626' : '#166534',
                    borderRadius: '12px',
                    fontSize: '14px',
                    fontWeight: '500'
                  }}>
-                   {(productoEncontrado.estado === 'inactivo') ? '❌ Inactivo' : '✅ Activo'}
+                   {!productoEncontrado.activo ? '❌ Inactivo' : '✅ Activo'}
                  </span>
                </div>
              </div>
@@ -1271,12 +1300,67 @@ marginRight: 'auto'
            </div>
          )}
 
-         {/* BOTONES DE ACCIÓN */}
+         {/* BOTONES DE ACCIÓN - ✅ AMPLIADOS CON REDUCCIÓN RÁPIDA */}
          <div style={{
            display: 'flex',
            flexDirection: isMobile ? 'column' : 'row',
            gap: '8px'
          }}>
+           {/* ✅ NUEVO: Botón de reducción rápida para ventas */}
+           <button
+             onClick={async () => {
+               const cantidad = prompt('¿Cuántas unidades se vendieron/entregaron?', '1');
+               if (cantidad && parseInt(cantidad) > 0) {
+                 try {
+                   const cantidadNum = parseInt(cantidad);
+                   if (cantidadNum > productoEncontrado.stock) {
+                     if (!confirm(`⚠️ Solo hay ${productoEncontrado.stock} unidades en stock.\n¿Deseas continuar con la reducción completa?`)) {
+                       return;
+                     }
+                   }
+                   
+                   const stockAnterior = productoEncontrado.stock;
+                   const nuevoStock = Math.max(0, stockAnterior - cantidadNum);
+                   
+                   await productosService.updateStock(productoEncontrado.id, nuevoStock);
+                   
+                   const productoActualizado = {
+                     ...productoEncontrado,
+                     stock: nuevoStock,
+                     accion_realizada: 'actualizado' as const
+                   };
+                   
+                   setProductoEncontrado(productoActualizado);
+                   setProductosEscaneados(prev => 
+                     prev.map(p => p.id === productoEncontrado.id ? productoActualizado : p)
+                   );
+                   
+                   alert(`✅ Venta registrada!\n\n📦 ${productoEncontrado.codigo_producto}\n🛒 Vendidas: ${cantidadNum} unidades\n📊 Stock: ${stockAnterior} → ${nuevoStock}`);
+                 } catch (error) {
+                   alert(`❌ Error registrando venta: ${error}`);
+                 }
+               }
+             }}
+             style={{
+               flex: 1,
+               padding: isMobile ? '14px' : '10px 16px',
+               backgroundColor: '#10b981',
+               color: 'white',
+               border: 'none',
+               borderRadius: '6px',
+               fontSize: '14px',
+               cursor: 'pointer',
+               display: 'flex',
+               alignItems: 'center',
+               justifyContent: 'center',
+               gap: '6px',
+               minHeight: '44px'
+             }}
+           >
+             <Package size={16} />
+             Registrar Venta
+           </button>
+           
            <button
              onClick={() => setMostrarModalStock(true)}
              style={{
