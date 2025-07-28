@@ -236,37 +236,23 @@ const Scanner: React.FC = () => {
       
       console.log('✅ Elemento qr-reader encontrado, iniciando scanner...');
       
-      // 🎯 CONFIGURACIÓN OPTIMIZADA PARA SAMSUNG S23 + CÓDIGOS DE BARRAS
+      // 🎯 CONFIGURACIÓN QUE FUNCIONABA + FIX DE CÓDIGOS
       const scanner = new Html5QrcodeScanner(
         "qr-reader",
         {
-          // ✅ CONFIGURACIÓN PROFESIONAL PARA CÓDIGOS DE BARRAS
-          fps: 10, // Velocidad óptima para Samsung S23
-          qrbox: { 
-            width: isMobile ? 280 : 320, 
-            height: isMobile ? 120 : 140  // ✅ RECTÁNGULO para códigos de barras
-          },
-          aspectRatio: isMobile ? 2.3 : 2.3, // ✅ Ratio perfecto para EAN13
-          
-          // ✅ TIPOS DE CÓDIGOS SOPORTADOS (Solo los principales)
-          supportedScanTypes: [
-            1, // EAN-13 (tu código principal) 
-            0  // QR Code (como alternativa)
-          ],
-          
-          // ✅ CONFIGURACIONES SIMPLIFICADAS SAMSUNG S23
+          fps: 5,
+          qrbox: { width: 200, height: 200 },
+          aspectRatio: 1.0,
+          // ✅ SOLO LOS 2 TIPOS PERMITIDOS (este era el único problema)
+          supportedScanTypes: [1], // Solo códigos de barras (incluye EAN-13)
           rememberLastUsedCamera: false,
-          showTorchButtonIfSupported: true, // Flash si está disponible
-          showZoomSliderIfSupported: false, // No zoom para evitar problemas
-          
-          // ✅ CONFIGURACIÓN DE VIDEO SIMPLIFICADA
+          showTorchButtonIfSupported: false,
+          showZoomSliderIfSupported: false,
           videoConstraints: {
-            facingMode: "environment",
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
+            facingMode: "environment"
           }
         },
-        false // No verbose para mejor rendimiento
+        false
       );
       
       scannerRef.current = scanner;
