@@ -248,42 +248,22 @@ const Scanner: React.FC = () => {
           },
           aspectRatio: isMobile ? 2.3 : 2.3, // ✅ Ratio perfecto para EAN13
           
-          // ✅ TIPOS DE CÓDIGOS SOPORTADOS
+          // ✅ TIPOS DE CÓDIGOS SOPORTADOS (Solo los principales)
           supportedScanTypes: [
-            0, // QR Code
-            1, // Data Matrix  
-            2, // UPC-A
-            3, // UPC-E
-            4, // EAN-8
-            5, // EAN-13 ← TU PRINCIPAL
-            6, // Code-39
-            7, // Code-93
-            8, // Code-128
-            9, // ITF (Interleaved 2 of 5)
-            10, // RSS-14
-            11, // RSS-Expanded
+            1, // EAN-13 (tu código principal) 
+            0  // QR Code (como alternativa)
           ],
           
-          // ✅ CONFIGURACIONES AVANZADAS SAMSUNG S23
-          rememberLastUsedCamera: true,
+          // ✅ CONFIGURACIONES SIMPLIFICADAS SAMSUNG S23
+          rememberLastUsedCamera: false,
           showTorchButtonIfSupported: true, // Flash si está disponible
           showZoomSliderIfSupported: false, // No zoom para evitar problemas
-          useBarCodeDetectorIfSupported: true, // ✅ API nativa de detección
           
-          // ✅ CONFIGURACIÓN DE VIDEO ESPECÍFICA SAMSUNG S23
+          // ✅ CONFIGURACIÓN DE VIDEO SIMPLIFICADA
           videoConstraints: {
             facingMode: "environment",
-            width: { min: 640, ideal: 1280, max: 1920 },
-            height: { min: 480, ideal: 720, max: 1080 },
-            // ✅ CONFIGURACIONES AVANZADAS PARA ENFOQUE
-            focusMode: "continuous",
-            whiteBalanceMode: "continuous",
-            exposureMode: "continuous"
-          },
-          
-          // ✅ CONFIGURACIONES ADICIONALES
-          experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
           }
         },
         false // No verbose para mejor rendimiento
