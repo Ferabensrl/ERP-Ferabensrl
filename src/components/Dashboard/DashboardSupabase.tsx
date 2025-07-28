@@ -5,11 +5,28 @@ import { useState, useEffect } from 'react'
 import { Package, ShoppingCart, AlertTriangle, TrendingUp } from 'lucide-react'
 import { supabase } from '../../lib/supabaseClient'
 
+interface ProductoStockCritico {
+  codigo_producto: string
+  descripcion: string
+  stock: number
+  stock_minimo: number
+  diferencia: number
+}
+
+interface ProductoMasVendido {
+  codigo_producto: string
+  descripcion: string
+  total_vendido: number
+  veces_vendido: number
+}
+
 interface EstadisticasReales {
   totalProductos: number
   productosStockBajo: number
   valorTotalInventario: number
   productosActivos: number
+  productosStockCritico: ProductoStockCritico[]
+  productosMasVendidos: ProductoMasVendido[]
   loading: boolean
   error: string | null
 }
@@ -24,6 +41,8 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
     productosStockBajo: 0,
     valorTotalInventario: 0,
     productosActivos: 0,
+    productosStockCritico: [],
+    productosMasVendidos: [],
     loading: true,
     error: null
   })
@@ -36,7 +55,7 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
         // Obtener estadísticas de productos - CORREGIDO para tu estructura
         const { data: productos, error } = await supabase
           .from('inventario')
-          .select('stock, precio_venta, stock_minimo, activo')
+          .select('codigo_producto, descripcion, stock, precio_venta, stock_minimo, activo')
         
         if (error) {
           console.error('❌ Error de Supabase:', error)
@@ -60,11 +79,74 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
           (total, p) => total + ((p.precio_venta || 0) * (p.stock || 0)), 0
         )
 
+        // 🚨 CRÍTICO: Productos llegando al límite de stock (para dar de baja)
+        const productosConStockMinimo = productosActivos.filter(p => 
+          p.stock_minimo != null && p.stock_minimo > 0
+        )
+        
+        const productosStockCritico = productosConStockMinimo
+          .map(p => ({
+            codigo_producto: p.codigo_producto,
+            descripcion: p.descripcion,
+            stock: p.stock || 0,
+            stock_minimo: p.stock_minimo || 0,
+            diferencia: (p.stock || 0) - (p.stock_minimo || 0)
+          }))
+          .filter(p => p.diferencia <= 5) // Productos a 5 unidades o menos del límite
+          .sort((a, b) => a.diferencia - b.diferencia) // Los más críticos primero
+          .slice(0, 10) // Top 10 más críticos
+
+        console.log('🚨 Productos stock crítico:', productosStockCritico)
+
+        // 📊 TOP 10 productos más vendidos
+        const { data: pedидosItems, error: pedidosError } = await supabase
+          .from('pedidos_items')
+          .select(`
+            codigo_producto,
+            cantidad,
+            inventario:codigo_producto (
+              descripcion
+            )
+          `)
+
+        if (pedidosError) {
+          console.error('❌ Error obteniendo pedidos:', pedidosError)
+        }
+
+        let productosMasVendidos: ProductoMasVendido[] = []
+        
+        if (pedидosItems && pedидosItems.length > 0) {
+          // Agrupar por código de producto y sumar cantidades
+          const ventasPorProducto = pedidosItems.reduce((acc: Record<string, any>, item) => {
+            const codigo = item.codigo_producto
+            if (!acc[codigo]) {
+              acc[codigo] = {
+                codigo_producto: codigo,
+                descripcion: item.inventario?.descripcion || 'Sin descripción',
+                total_vendido: 0,
+                veces_vendido: 0
+              }
+            }
+            acc[codigo].total_vendido += item.cantidad || 0
+            acc[codigo].veces_vendido += 1
+            return acc
+          }, {})
+
+          // Convertir a array y ordenar por total vendido
+          productosMasVendidos = Object.values(ventasPorProducto)
+            .sort((a: any, b: any) => b.total_vendido - a.total_vendido)
+            .slice(0, 10)
+            
+          console.log('📊 Top productos más vendidos:', productosMasVendidos)
+        }
+
         setStats({
           totalProductos,
           productosStockBajo,
           valorTotalInventario,
           productosActivos: totalProductos,
+          productosStockCritico,
+          productosMasVendidos,
           loading: false,
           error: null
         })
@@ -237,6 +319,223 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
           </p>
         </div>
       </div>
+
+      {/* 🚨 ALERTA CRÍTICA: Productos llegando al límite */}
+      {stats.productosStockCritico.length > 0 && (
+        <div style={{
+          backgroundColor: '#fef2f2',
+          borderRadius: '12px',
+          padding: '24px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          border: '2px solid #fca5a5',
+          marginBottom: '32px'
+        }}>
+          <h3 style={{
+            fontSize: '20px',
+            fontWeight: '600',
+            color: '#dc2626',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            🚨 PRODUCTOS CRÍTICOS - Dar de baja a la venta
+          </h3>
+          
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: '12px'
+          }}>
+            {stats.productosStockCritico.map((producto, index) => (
+              <div key={producto.codigo_producto} style={{
+                backgroundColor: 'white',
+                padding: '16px',
+                borderRadius: '8px',
+                border: producto.diferencia <= 0 ? '2px solid #dc2626' : '1px solid #fca5a5',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div>
+                  <p style={{ 
+                    fontSize: '14px', 
+                    fontWeight: 'bold', 
+                    color: '#1f2937', 
+                    margin: '0 0 4px 0' 
+                  }}>
+                    {producto.codigo_producto}
+                  </p>
+                  <p style={{ 
+                    fontSize: '12px', 
+                    color: '#6b7280', 
+                    margin: 0,
+                    maxWidth: '200px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {producto.descripcion}
+                  </p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ 
+                    fontSize: '16px', 
+                    fontWeight: 'bold', 
+                    color: producto.diferencia <= 0 ? '#dc2626' : '#f59e0b',
+                    margin: '0 0 4px 0' 
+                  }}>
+                    {producto.stock} uds
+                  </p>
+                  <p style={{ 
+                    fontSize: '12px', 
+                    color: '#6b7280', 
+                    margin: 0 
+                  }}>
+                    Mín: {producto.stock_minimo}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <div style={{
+            marginTop: '16px',
+            padding: '12px',
+            backgroundColor: '#fef3c7',
+            borderRadius: '8px',
+            border: '1px solid #fcd34d'
+          }}>
+            <p style={{ 
+              fontSize: '14px', 
+              color: '#92400e', 
+              margin: 0,
+              textAlign: 'center'
+            }}>
+              💡 <strong>Tip:</strong> Estos productos están cerca del stock mínimo. Considerá darlos de baja antes de quedarte sin mercadería.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 📊 TOP 10 productos más vendidos */}
+      {stats.productosMasVendidos.length > 0 && (
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '24px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          border: '2px solid #10b981',
+          marginBottom: '32px'
+        }}>
+          <h3 style={{
+            fontSize: '20px',
+            fontWeight: '600',
+            color: '#10b981',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            📊 TOP 10 - Productos Más Vendidos
+          </h3>
+          
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: '12px'
+          }}>
+            {stats.productosMasVendidos.map((producto, index) => (
+              <div key={producto.codigo_producto} style={{
+                backgroundColor: index < 3 ? '#f0fdf4' : '#f8fafc',
+                padding: '16px',
+                borderRadius: '8px',
+                border: index < 3 ? '2px solid #10b981' : '1px solid #e5e7eb',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                position: 'relative'
+              }}>
+                {index < 3 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}>
+                    {index + 1}
+                  </div>
+                )}
+                
+                <div style={{ maxWidth: '200px' }}>
+                  <p style={{ 
+                    fontSize: '14px', 
+                    fontWeight: 'bold', 
+                    color: '#1f2937', 
+                    margin: '0 0 4px 0' 
+                  }}>
+                    {producto.codigo_producto}
+                  </p>
+                  <p style={{ 
+                    fontSize: '12px', 
+                    color: '#6b7280', 
+                    margin: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {producto.descripcion}
+                  </p>
+                </div>
+                
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ 
+                    fontSize: '18px', 
+                    fontWeight: 'bold', 
+                    color: '#10b981',
+                    margin: '0 0 4px 0' 
+                  }}>
+                    {producto.total_vendido} uds
+                  </p>
+                  <p style={{ 
+                    fontSize: '12px', 
+                    color: '#6b7280', 
+                    margin: 0 
+                  }}>
+                    {producto.veces_vendido} pedidos
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <div style={{
+            marginTop: '16px',
+            padding: '12px',
+            backgroundColor: '#ecfdf5',
+            borderRadius: '8px',
+            border: '1px solid #a7f3d0'
+          }}>
+            <p style={{ 
+              fontSize: '14px', 
+              color: '#065f46', 
+              margin: 0,
+              textAlign: 'center'
+            }}>
+              🎯 <strong>Insight:</strong> Estos son tus productos estrella. Considerá tener stock suficiente de estos códigos.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Accesos rápidos */}
       <div style={{
