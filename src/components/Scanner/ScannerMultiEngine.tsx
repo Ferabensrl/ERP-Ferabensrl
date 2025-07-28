@@ -15,7 +15,11 @@ import {
   Trash2,
   CheckCircle,
   AlertCircle,
-  Settings
+  Settings,
+  Flashlight,
+  FlashlightOff,
+  Focus,
+  RefreshCw
 } from 'lucide-react';
 import { productosService } from '../../lib/supabaseClient';
 
@@ -74,6 +78,12 @@ const ScannerMultiEngine: React.FC = () => {
     'native-barcode': 'unknown'
   });
   
+  // 🔍 NUEVOS ESTADOS PARA OPTIMIZACIÓN SAMSUNG S23
+  const [torchEnabled, setTorchEnabled] = useState(false);
+  const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
+  const [focusMode, setFocusMode] = useState<'auto' | 'continuous' | 'manual'>('continuous');
+  
   // ESTADOS DE PRODUCTOS
   const [productoEncontrado, setProductoEncontrado] = useState<ProductoEscaneado | null>(null);
   const [productosEscaneados, setProductosEscaneados] = useState<ProductoEscaneado[]>([]);
@@ -112,10 +122,45 @@ const ScannerMultiEngine: React.FC = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // DETECTAR CAPACIDADES AL MONTAR
+  // DETECTAR CAPACIDADES Y CÁMARAS AL MONTAR
   useEffect(() => {
     detectarCapacidades();
+    detectarCamaras();
   }, []);
+  
+  // 🔍 DETECTAR CÁMARAS DISPONIBLES
+  const detectarCamaras = async () => {
+    try {
+      console.log('📷 Detectando cámaras disponibles...');
+      
+      // Solicitar permisos primero
+      await navigator.mediaDevices.getUserMedia({ video: true });
+      
+      // Obtener dispositivos
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      
+      console.log(`✅ Encontradas ${videoDevices.length} cámaras:`, videoDevices.map(d => d.label));
+      
+      setAvailableCameras(videoDevices);
+      
+      // Seleccionar la cámara trasera principal (normalmente la primera "environment")
+      const rearCamera = videoDevices.find(device => 
+        device.label.toLowerCase().includes('back') ||
+        device.label.toLowerCase().includes('rear') ||
+        device.label.toLowerCase().includes('environment') ||
+        device.label.toLowerCase().includes('main')
+      ) || videoDevices.find(device => !device.label.toLowerCase().includes('front'));
+      
+      if (rearCamera) {
+        setSelectedCameraId(rearCamera.deviceId);
+        console.log(`✅ Cámara seleccionada: ${rearCamera.label}`);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error detectando cámaras:', error);
+    }
+  };
 
   // CLEANUP DEL ESCÁNER AL DESMONTAR
   useEffect(() => {
@@ -210,28 +255,60 @@ const ScannerMultiEngine: React.FC = () => {
           type: "LiveStream",
           target: document.querySelector('#qr-reader'),
           constraints: {
-            width: { min: 320, ideal: 640, max: 1280 },
-            height: { min: 240, ideal: 480, max: 720 },
+            // 🔧 OPTIMIZADO PARA SAMSUNG S23 - ENFOQUE Y RESOLUCIÓN
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 },
             facingMode: "environment",
-            aspectRatio: { min: 1, max: 2 }
+            aspectRatio: { min: 1.2, ideal: 1.77, max: 2.0 },
+            // ✅ AUTO-FOCUS FORZADO PARA SAMSUNG
+            focusMode: focusMode,
+            focusDistance: { min: 0.1, ideal: 0.3, max: Infinity },
+            // ✅ SELECCIÓN ESPECÍFICA DE CÁMARA
+            deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined,
+            // ✅ OPTIMIZACIONES ADICIONALES
+            whiteBalanceMode: "auto",
+            exposureMode: "auto",
+            torch: torchEnabled
           }
         },
         decoder: {
           readers: [
-            "ean_reader",
-            "ean_8_reader", 
-            "code_128_reader",
-            "code_39_reader",
-            "codabar_reader",
-            "i2of5_reader"
-          ]
+            "ean_reader",      // EAN-13 (principal)
+            "ean_8_reader",    // EAN-8
+            "code_128_reader", // Code 128
+            "code_39_reader",  // Code 39
+            "codabar_reader",  // Codabar
+            "i2of5_reader"     // Interleaved 2 of 5
+          ],
+          // ✅ CONFIGURACIONES OPTIMIZADAS PARA DETECCIÓN
+          multiple: false,
+          debug: {
+            drawBoundingBox: false,
+            showFrequency: false,
+            drawScanline: true,
+            showPattern: false
+          }
         },
         locator: {
-          patchSize: "medium",
-          halfSample: true
+          patchSize: "large",     // 🔍 Parches más grandes para mejor detección
+          halfSample: false,      // 🔍 Sin reducción de muestra para mejor calidad
+          debug: {
+            showCanvas: false,
+            showPatches: false,
+            showFoundPatches: false,
+            showSkeleton: false,
+            showLabels: false,
+            showPatchLabels: false,
+            showRemainingPatchLabels: false,
+            boxFromPatches: {
+              showTransformed: false,
+              showTransformedBox: false,
+              showBB: false
+            }
+          }
         },
-        numOfWorkers: navigator.hardwareConcurrency || 2,
-        frequency: 5,
+        numOfWorkers: Math.min(navigator.hardwareConcurrency || 2, 4), // 🔍 Máximo 4 workers
+        frequency: 3,  // 🔍 Frecuencia más baja para mejor precisión
         debug: false
       };
       
@@ -280,13 +357,28 @@ const ScannerMultiEngine: React.FC = () => {
         formats: ['ean_13', 'ean_8', 'code_128', 'code_39']
       });
       
-      const stream = await navigator.mediaDevices.getUserMedia({
+      // 🔧 CONFIGURACIÓN OPTIMIZADA PARA SAMSUNG S23
+      const videoConstraints: MediaStreamConstraints = {
         video: {
           facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          width: { min: 640, ideal: 1280, max: 1920 },
+          height: { min: 480, ideal: 720, max: 1080 },
+          aspectRatio: { min: 1.2, ideal: 1.77, max: 2.0 },
+          // ✅ AUTO-FOCUS PARA SAMSUNG
+          focusMode: focusMode as any,
+          focusDistance: { min: 0.1, ideal: 0.3, max: Infinity } as any,
+          // ✅ SELECCIÓN DE CÁMARA ESPECÍFICA
+          deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined,
+          // ✅ CONFIGURACIONES ADICIONALES
+          whiteBalanceMode: 'auto' as any,
+          exposureMode: 'auto' as any,
+          torch: torchEnabled as any,
+          // ✅ FRAME RATE OPTIMIZADO
+          frameRate: { min: 15, ideal: 30, max: 60 }
         }
-      });
+      };
+      
+      const stream = await navigator.mediaDevices.getUserMedia(videoConstraints);
       
       const video = document.createElement('video');
       video.srcObject = stream;
@@ -365,15 +457,23 @@ const ScannerMultiEngine: React.FC = () => {
       const scanner = new Html5QrcodeScanner(
         "qr-reader",
         {
-          fps: 5,
-          qrbox: { width: 200, height: 200 },
-          aspectRatio: 1.0,
+          fps: 10, // 🔍 FPS más alto para Samsung S23
+          qrbox: { width: 300, height: 120 }, // 🔍 Caja más ancha para códigos de barras
+          aspectRatio: 1.77, // 🔍 Aspecto 16:9 para Samsung S23
           supportedScanTypes: [1], // Solo códigos de barras
           rememberLastUsedCamera: false,
-          showTorchButtonIfSupported: false,
+          showTorchButtonIfSupported: true, // ✅ Habilitar linterna
           showZoomSliderIfSupported: false,
           videoConstraints: {
-            facingMode: "environment"
+            facingMode: "environment",
+            // ✅ CONFIGURACIONES SAMSUNG S23
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 },
+            focusMode: focusMode as any,
+            focusDistance: { min: 0.1, ideal: 0.3, max: Infinity } as any,
+            deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined,
+            torch: torchEnabled as any,
+            frameRate: { min: 15, ideal: 30, max: 60 }
           }
         },
         false
@@ -1125,6 +1225,71 @@ const ScannerMultiEngine: React.FC = () => {
             }}>
               📱 Scanner EAN13 Multi-Engine ({currentEngine})
             </h3>
+            
+            {/* 🔍 PANEL DE CONFIGURACIÓN SAMSUNG S23 */}
+            {availableCameras.length > 1 && (
+              <div style={{
+                backgroundColor: '#f0f9ff',
+                border: '1px solid #0ea5e9',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '16px'
+              }}>
+                <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#0c4a6e', fontWeight: '600' }}>
+                  📷 Configuración de Cámara
+                </h4>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <select
+                    value={selectedCameraId || ''}
+                    onChange={(e) => {
+                      setSelectedCameraId(e.target.value);
+                      if (isScanning) {
+                        detenerEscaner();
+                        setTimeout(() => iniciarEscaner(), 500);
+                      }
+                    }}
+                    style={{
+                      padding: '6px',
+                      borderRadius: '4px',
+                      border: '1px solid #0ea5e9',
+                      fontSize: '12px'
+                    }}
+                  >
+                    <option value="">Cámara automática</option>
+                    {availableCameras.map(camera => (
+                      <option key={camera.deviceId} value={camera.deviceId}>
+                        {camera.label || `Cámara ${camera.deviceId.substring(0, 8)}...`}
+                      </option>
+                    ))}
+                  </select>
+                  
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <label style={{ fontSize: '12px', color: '#0c4a6e' }}>Enfoque:</label>
+                    <select
+                      value={focusMode}
+                      onChange={(e) => {
+                        setFocusMode(e.target.value as any);
+                        if (isScanning) {
+                          detenerEscaner();
+                          setTimeout(() => iniciarEscaner(), 500);
+                        }
+                      }}
+                      style={{
+                        padding: '4px',
+                        borderRadius: '4px',
+                        border: '1px solid #0ea5e9',
+                        fontSize: '11px'
+                      }}
+                    >
+                      <option value="auto">Auto</option>
+                      <option value="continuous">Continuo</option>
+                      <option value="manual">Manual</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* SCANNER MANUAL PRINCIPAL */}
             <div style={{
@@ -1216,6 +1381,19 @@ const ScannerMultiEngine: React.FC = () => {
               }}>
                 💡 Escribe el código y presiona Enter o toca Buscar
               </p>
+              
+              {/* 📱 CONSEJOS ESPECÍFICOS PARA SAMSUNG S23 */}
+              <div style={{
+                backgroundColor: '#fef3c7',
+                border: '1px solid #f59e0b',
+                borderRadius: '6px',
+                padding: '8px',
+                marginTop: '12px',
+                fontSize: '12px',
+                color: '#92400e'
+              }}>
+                📱 <strong>Tips Samsung S23:</strong> Si la cámara no enfoca bien, usa la linterna, cambia el modo de enfoque, o selecciona otra cámara
+              </div>
             </div>
 
             {/* SEPARADOR */}
@@ -1230,19 +1408,21 @@ const ScannerMultiEngine: React.FC = () => {
               <div style={{ flex: 1, height: '1px', backgroundColor: '#d1d5db' }}></div>
             </div>
 
-            {/* ÁREA DE ESCANEO CON CÁMARA */}
+            {/* ÁREA DE ESCANEO CON CÁMARA - OPTIMIZADA PARA SAMSUNG S23 */}
             <div style={{
-              width: isMobile ? '280px' : '320px',
-              height: isMobile ? '200px' : '240px',
+              width: isMobile ? '320px' : '400px',  // 🔍 Más ancho para mejor visualización
+              height: isMobile ? '240px' : '300px', // 🔍 Más alto para códigos de barras
               margin: '0 auto 24px',
-              border: showCamera ? 'none' : '2px dashed #6b7280',
+              border: showCamera ? '2px solid #22c55e' : '2px dashed #6b7280',
               borderRadius: '12px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: showCamera ? '#000' : '#f9fafb',
               position: 'relative',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              // 🔍 INDICADOR VISUAL DE ENFOQUE
+              boxShadow: showCamera ? '0 0 20px rgba(34, 197, 94, 0.3)' : 'none'
             }}>
               {/* CONTENEDOR DEL SCANNER SIEMPRE PRESENTE */}
               <div id="qr-reader" style={{ 
@@ -1260,7 +1440,10 @@ const ScannerMultiEngine: React.FC = () => {
                       Scanner con Cámara (Multi-Engine)
                     </p>
                     <p style={{ margin: '6px 0 0 0', color: '#9ca3af', fontSize: '12px' }}>
-                      Motor: {currentEngine} | Si no funciona, usa ingreso manual ↑
+                      Motor: {currentEngine} | Optimizado para Samsung S23
+                    </p>
+                    <p style={{ margin: '4px 0 0 0', color: '#9ca3af', fontSize: '11px' }}>
+                      💡 Mantén el código a 15-30cm de distancia y bien iluminado
                     </p>
                   </div>
                 )}
@@ -1283,8 +1466,72 @@ const ScannerMultiEngine: React.FC = () => {
               </div>
             )}
 
-            {/* BOTONES DE CONTROL */}
+            {/* BOTONES DE CONTROL CON LINTERNA */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              
+              {/* CONTROLES DE LINTERNA CUANDO ESTÁ ESCANEANDO */}
+              {showCamera && (
+                <div style={{
+                  display: 'flex',
+                  gap: '8px',
+                  justifyContent: 'center',
+                  marginBottom: '12px'
+                }}>
+                  <button
+                    onClick={() => {
+                      setTorchEnabled(!torchEnabled);
+                      // Reiniciar scanner con nueva configuración
+                      if (isScanning) {
+                        detenerEscaner();
+                        setTimeout(() => iniciarEscaner(), 300);
+                      }
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: torchEnabled ? '#f59e0b' : '#6b7280',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    {torchEnabled ? <Flashlight size={16} /> : <FlashlightOff size={16} />}
+                    {torchEnabled ? 'Apagar Linterna' : 'Encender Linterna'}
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      // Cambiar modo de enfoque
+                      const nextMode = focusMode === 'auto' ? 'continuous' : 
+                                       focusMode === 'continuous' ? 'manual' : 'auto';
+                      setFocusMode(nextMode);
+                      if (isScanning) {
+                        detenerEscaner();
+                        setTimeout(() => iniciarEscaner(), 300);
+                      }
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Focus size={16} />
+                    Enfoque: {focusMode}
+                  </button>
+                </div>
+              )}
               {!showCamera ? (
                 <button
                   onClick={iniciarEscaner}
@@ -1321,7 +1568,7 @@ const ScannerMultiEngine: React.FC = () => {
                   ) : (
                     <>
                       <Zap size={isMobile ? 28 : 24} />
-                      Activar Escáner ({currentEngine})
+                      Activar Escáner Samsung S23 ({currentEngine})
                     </>
                   )}
                 </button>
