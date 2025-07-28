@@ -20,6 +20,21 @@ interface ProductoMasVendido {
   veces_vendido: number
 }
 
+interface ProductoRentable {
+  codigo_producto: string
+  descripcion: string
+  precio_venta: number
+  precio_costo: number
+  margen_bruto: number
+  porcentaje_ganancia: number
+}
+
+interface VentasPorMes {
+  mes: string
+  total_unidades: number
+  total_productos_distintos: number
+}
+
 interface EstadisticasReales {
   totalProductos: number
   productosStockBajo: number
@@ -27,6 +42,8 @@ interface EstadisticasReales {
   productosActivos: number
   productosStockCritico: ProductoStockCritico[]
   productosMasVendidos: ProductoMasVendido[]
+  productosRentables: ProductoRentable[]
+  ventasPorMes: VentasPorMes[]
   loading: boolean
   error: string | null
 }
@@ -43,6 +60,8 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
     productosActivos: 0,
     productosStockCritico: [],
     productosMasVendidos: [],
+    productosRentables: [],
+    ventasPorMes: [],
     loading: true,
     error: null
   })
@@ -136,6 +155,82 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
           console.log('📊 Top productos más vendidos:', productosMasVendidos)
         }
 
+        // 💰 RENTABILIDAD: Productos con mejor margen bruto
+        const productosConCosto = productosActivos.filter(p => 
+          p.precio_costo != null && p.precio_costo > 0 && p.precio_venta > 0
+        )
+        
+        const productosRentables = productosConCosto
+          .map(p => {
+            const precioVenta = p.precio_venta || 0
+            const precioCosto = p.precio_costo || 0
+            const margenBruto = precioVenta - precioCosto
+            const porcentajeGanancia = precioCosto > 0 ? ((margenBruto / precioCosto) * 100) : 0
+            
+            return {
+              codigo_producto: p.codigo_producto,
+              descripcion: p.descripcion,
+              precio_venta: precioVenta,
+              precio_costo: precioCosto,
+              margen_bruto: margenBruto,
+              porcentaje_ganancia: porcentajeGanancia
+            }
+          })
+          .sort((a, b) => b.porcentaje_ganancia - a.porcentaje_ganancia)
+          .slice(0, 10)
+
+        console.log('💰 Top productos rentables:', productosRentables)
+
+        // 📅 TENDENCIAS: Ventas por mes desde pedidos
+        const { data: pedidos, error: pedidosMainError } = await supabase
+          .from('pedidos')
+          .select('created_at')
+
+        let ventasPorMes: VentasPorMes[] = []
+        
+        if (pedidos && pedidos.length > 0 && pedidoItems && pedidoItems.length > 0) {
+          // Crear mapa de pedido_id a fecha
+          const fechasPedidos = pedidos.reduce((acc: Record<string, string>, pedido: any) => {
+            acc[pedido.id] = pedido.created_at
+            return acc
+          }, {})
+
+          // Obtener pedido_id de items para hacer join manual
+          const { data: itemsConPedido, error: itemsError } = await supabase
+            .from('pedido_items')
+            .select('pedido_id, cantidad_pedida, codigo_producto')
+
+          if (itemsConPedido && !itemsError) {
+            // Procesar ventas por mes
+            const ventasPorMesMap = itemsConPedido.reduce((acc: Record<string, any>, item) => {
+              const fechaPedido = fechasPedidos[item.pedido_id]
+              if (fechaPedido) {
+                const fecha = new Date(fechaPedido)
+                const mesAno = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`
+                
+                if (!acc[mesAno]) {
+                  acc[mesAno] = { total_unidades: 0, productos_distintos: new Set() }
+                }
+                
+                acc[mesAno].total_unidades += item.cantidad_pedida || 0
+                acc[mesAno].productos_distintos.add(item.codigo_producto)
+              }
+              return acc
+            }, {})
+
+            ventasPorMes = Object.entries(ventasPorMesMap)
+              .map(([mes, data]: [string, any]) => ({
+                mes,
+                total_unidades: data.total_unidades,
+                total_productos_distintos: data.productos_distintos.size
+              }))
+              .sort((a, b) => a.mes.localeCompare(b.mes))
+              .slice(-6) // Últimos 6 meses
+          }
+        }
+
+        console.log('📅 Tendencias por mes:', ventasPorMes)
+
         setStats({
           totalProductos,
           productosStockBajo,
@@ -143,6 +238,8 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
           productosActivos: totalProductos,
           productosStockCritico,
           productosMasVendidos,
+          productosRentables,
+          ventasPorMes,
           loading: false,
           error: null
         })
@@ -532,6 +629,403 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
           </div>
         </div>
       )}
+
+      {/* 💰 RENTABILIDAD: Top productos más rentables */}
+      {stats.productosRentables.length > 0 && (
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '24px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          border: '2px solid #8b5cf6',
+          marginBottom: '32px'
+        }}>
+          <h3 style={{
+            fontSize: '20px',
+            fontWeight: '600',
+            color: '#8b5cf6',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            💰 TOP 10 - Productos Más Rentables (Margen Bruto)
+          </h3>
+          
+          <div style={{
+            marginBottom: '16px',
+            padding: '12px',
+            backgroundColor: '#fef3c7',
+            borderRadius: '8px',
+            border: '1px solid #fcd34d'
+          }}>
+            <p style={{ 
+              fontSize: '14px', 
+              color: '#92400e', 
+              margin: 0,
+              textAlign: 'center'
+            }}>
+              ⚠️ <strong>Nota:</strong> Cálculo base sin costos de importación. Ideal para priorizar productos al importar desde China.
+            </p>
+          </div>
+          
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+            gap: '12px'
+          }}>
+            {stats.productosRentables.map((producto, index) => (
+              <div key={producto.codigo_producto} style={{
+                backgroundColor: index < 3 ? '#f3e8ff' : '#f8fafc',
+                padding: '16px',
+                borderRadius: '8px',
+                border: index < 3 ? '2px solid #8b5cf6' : '1px solid #e5e7eb',
+                position: 'relative'
+              }}>
+                {index < 3 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    backgroundColor: '#8b5cf6',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}>
+                    {index + 1}
+                  </div>
+                )}
+                
+                <div style={{ marginBottom: '12px' }}>
+                  <p style={{ 
+                    fontSize: '14px', 
+                    fontWeight: 'bold', 
+                    color: '#1f2937', 
+                    margin: '0 0 4px 0' 
+                  }}>
+                    {producto.codigo_producto}
+                  </p>
+                  <p style={{ 
+                    fontSize: '12px', 
+                    color: '#6b7280', 
+                    margin: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {producto.descripcion}
+                  </p>
+                </div>
+                
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: '1fr 1fr', 
+                  gap: '8px',
+                  fontSize: '12px'
+                }}>
+                  <div>
+                    <span style={{ color: '#6b7280' }}>Costo: </span>
+                    <span style={{ fontWeight: 'bold' }}>${producto.precio_costo.toFixed(2)}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: '#6b7280' }}>Venta: </span>
+                    <span style={{ fontWeight: 'bold' }}>${producto.precio_venta.toFixed(2)}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: '#6b7280' }}>Margen: </span>
+                    <span style={{ fontWeight: 'bold', color: '#10b981' }}>${producto.margen_bruto.toFixed(2)}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: '#6b7280' }}>Ganancia: </span>
+                    <span style={{ 
+                      fontWeight: 'bold', 
+                      color: '#8b5cf6',
+                      fontSize: '14px'
+                    }}>
+                      {producto.porcentaje_ganancia.toFixed(0)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 📅 TENDENCIAS: Ventas por mes */}
+      {stats.ventasPorMes.length > 0 && (
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '24px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          border: '2px solid #f59e0b',
+          marginBottom: '32px'
+        }}>
+          <h3 style={{
+            fontSize: '20px',
+            fontWeight: '600',
+            color: '#f59e0b',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            📅 Tendencias de Ventas - Últimos 6 Meses
+          </h3>
+          
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+            gap: '16px',
+            marginBottom: '16px'
+          }}>
+            {stats.ventasPorMes.map((venta, index) => {
+              const [ano, mes] = venta.mes.split('-')
+              const nombreMes = new Date(parseInt(ano), parseInt(mes) - 1).toLocaleDateString('es-ES', { month: 'short' })
+              const maxUnidades = Math.max(...stats.ventasPorMes.map(v => v.total_unidades))
+              const alturaGrafico = (venta.total_unidades / maxUnidades) * 100
+              
+              return (
+                <div key={venta.mes} style={{
+                  textAlign: 'center'
+                }}>
+                  <div style={{
+                    height: '120px',
+                    display: 'flex',
+                    alignItems: 'end',
+                    justifyContent: 'center',
+                    marginBottom: '8px'
+                  }}>
+                    <div style={{
+                      width: '60px',
+                      height: `${alturaGrafico}%`,
+                      backgroundColor: '#f59e0b',
+                      borderRadius: '4px 4px 0 0',
+                      minHeight: '10px',
+                      display: 'flex',
+                      alignItems: 'start',
+                      justifyContent: 'center',
+                      paddingTop: '4px',
+                      color: 'white',
+                      fontSize: '10px',
+                      fontWeight: 'bold'
+                    }}>
+                      {venta.total_unidades}
+                    </div>
+                  </div>
+                  <p style={{ 
+                    fontSize: '12px', 
+                    fontWeight: 'bold', 
+                    color: '#1f2937', 
+                    margin: '0 0 4px 0',
+                    textTransform: 'capitalize'
+                  }}>
+                    {nombreMes} {ano}
+                  </p>
+                  <p style={{ 
+                    fontSize: '10px', 
+                    color: '#6b7280', 
+                    margin: 0 
+                  }}>
+                    {venta.total_productos_distintos} productos
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+          
+          <div style={{
+            padding: '12px',
+            backgroundColor: '#fef3c7',
+            borderRadius: '8px',
+            border: '1px solid #fcd34d'
+          }}>
+            <p style={{ 
+              fontSize: '14px', 
+              color: '#92400e', 
+              margin: 0,
+              textAlign: 'center'
+            }}>
+              📈 <strong>Insight:</strong> Seguí estas tendencias para planificar tus próximas importaciones desde China.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 📊 GRÁFICOS: Distribución de productos */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+        gap: '24px',
+        marginBottom: '32px'
+      }}>
+        {/* Gráfico circular - Top 5 más vendidos */}
+        {stats.productosMasVendidos.length > 0 && (
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            border: '2px solid #06b6d4'
+          }}>
+            <h4 style={{
+              fontSize: '16px',
+              fontWeight: '600',
+              color: '#06b6d4',
+              marginBottom: '16px',
+              textAlign: 'center'
+            }}>
+              🔵 Top 5 Más Vendidos
+            </h4>
+            
+            <div style={{ position: 'relative', textAlign: 'center' }}>
+              {/* Simulación de gráfico circular con CSS */}
+              <div style={{
+                width: '120px',
+                height: '120px',
+                borderRadius: '50%',
+                background: `conic-gradient(
+                  #06b6d4 0% ${(stats.productosMasVendidos[0]?.total_vendido / stats.productosMasVendidos.slice(0,5).reduce((sum, p) => sum + p.total_vendido, 0)) * 100}%,
+                  #10b981 ${(stats.productosMasVendidos[0]?.total_vendido / stats.productosMasVendidos.slice(0,5).reduce((sum, p) => sum + p.total_vendido, 0)) * 100}% ${((stats.productosMasVendidos[0]?.total_vendido + stats.productosMasVendidos[1]?.total_vendido) / stats.productosMasVendidos.slice(0,5).reduce((sum, p) => sum + p.total_vendido, 0)) * 100}%,
+                  #f59e0b ${((stats.productosMasVendidos[0]?.total_vendido + stats.productosMasVendidos[1]?.total_vendido) / stats.productosMasVendidos.slice(0,5).reduce((sum, p) => sum + p.total_vendido, 0)) * 100}% 80%,
+                  #8b5cf6 80% 90%,
+                  #ef4444 90% 100%
+                )`,
+                margin: '0 auto 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '12px'
+              }}>
+                TOP 5
+              </div>
+              
+              <div style={{ fontSize: '12px', textAlign: 'left' }}>
+                {stats.productosMasVendidos.slice(0, 5).map((producto, index) => {
+                  const colores = ['#06b6d4', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444']
+                  return (
+                    <div key={producto.codigo_producto} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      marginBottom: '4px'
+                    }}>
+                      <div style={{
+                        width: '12px',
+                        height: '12px',
+                        backgroundColor: colores[index],
+                        borderRadius: '2px',
+                        marginRight: '8px'
+                      }}></div>
+                      <span style={{ fontSize: '11px' }}>
+                        {producto.codigo_producto} ({producto.total_vendido})
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Gráfico de barras - Productos por categoría */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '24px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          border: '2px solid #22c55e'
+        }}>
+          <h4 style={{
+            fontSize: '16px',
+            fontWeight: '600',
+            color: '#22c55e',
+            marginBottom: '16px',
+            textAlign: 'center'
+          }}>
+            📊 Estado del Inventario
+          </h4>
+          
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}>
+              <div>
+                <div style={{
+                  width: '100%',
+                  height: '20px',
+                  backgroundColor: '#f3f4f6',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  marginBottom: '4px'
+                }}>
+                  <div style={{
+                    width: `${stats.totalProductos > 0 ? ((stats.totalProductos - stats.productosStockBajo) / stats.totalProductos) * 100 : 0}%`,
+                    height: '100%',
+                    backgroundColor: '#22c55e',
+                    borderRadius: '10px'
+                  }}></div>
+                </div>
+                <p style={{ fontSize: '12px', margin: 0, color: '#22c55e', fontWeight: 'bold' }}>
+                  Stock Normal: {stats.totalProductos - stats.productosStockBajo}
+                </p>
+              </div>
+              
+              <div>
+                <div style={{
+                  width: '100%',
+                  height: '20px',
+                  backgroundColor: '#f3f4f6',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  marginBottom: '4px'
+                }}>
+                  <div style={{
+                    width: `${stats.totalProductos > 0 ? (stats.productosStockBajo / stats.totalProductos) * 100 : 0}%`,
+                    height: '100%',
+                    backgroundColor: '#f59e0b',
+                    borderRadius: '10px'
+                  }}></div>
+                </div>
+                <p style={{ fontSize: '12px', margin: 0, color: '#f59e0b', fontWeight: 'bold' }}>
+                  Stock Bajo: {stats.productosStockBajo}
+                </p>
+              </div>
+              
+              <div>
+                <div style={{
+                  width: '100%',
+                  height: '20px',
+                  backgroundColor: '#f3f4f6',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  marginBottom: '4px'
+                }}>
+                  <div style={{
+                    width: `${stats.totalProductos > 0 ? (stats.productosStockCritico.length / stats.totalProductos) * 100 : 0}%`,
+                    height: '100%',
+                    backgroundColor: '#ef4444',
+                    borderRadius: '10px'
+                  }}></div>
+                </div>
+                <p style={{ fontSize: '12px', margin: 0, color: '#ef4444', fontWeight: 'bold' }}>
+                  Críticos: {stats.productosStockCritico.length}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Accesos rápidos */}
       <div style={{
