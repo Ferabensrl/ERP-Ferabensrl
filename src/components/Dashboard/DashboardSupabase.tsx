@@ -274,7 +274,6 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
         }))
       }
     }
-  }
 
   useEffect(() => {
     cargarEstadisticas()
