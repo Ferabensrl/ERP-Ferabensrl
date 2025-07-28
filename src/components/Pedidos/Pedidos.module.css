@@ -1,0 +1,486 @@
+/* --- Estilos Globales y de Página --- */
+.pageContainer {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.pageHeader {
+  margin-bottom: 24px;
+}
+
+.pageTitle {
+  font-size: 30px;
+  font-weight: bold;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+}
+
+.pageSubtitle {
+  color: #6b7280;
+  margin: 0;
+}
+
+/* --- Componentes Reutilizables: Tarjetas y Botones --- */
+.card {
+  background-color: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.buttonPrimary {
+  composes: button;
+  background-color: #2563eb;
+  color: white;
+}
+.buttonPrimary:hover {
+  background-color: #1d4ed8;
+}
+
+.buttonSecondary {
+  composes: button;
+  background-color: white;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+.buttonSecondary:hover {
+  background-color: #f9fafb;
+}
+
+.buttonSuccess {
+  composes: button;
+  background-color: #22c55e;
+  color: white;
+}
+.buttonSuccess:hover {
+  background-color: #16a34a;
+}
+
+.buttonDanger {
+  composes: button;
+  background-color: #ef4444;
+  color: white;
+}
+.buttonDanger:hover {
+  background-color: #dc2626;
+}
+
+.buttonReset {
+  composes: buttonSecondary;
+  flex: 1;
+  padding: 12px;
+}
+
+/* --- Vista: Lista de Pedidos --- */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.statCard {
+  composes: card;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.statCard p:first-of-type {
+  font-size: 20px;
+  font-weight: bold;
+  margin: 0;
+}
+.statCard p:last-of-type {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.pedidosList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pedidoCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.pedidoCardTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.clientInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 14px;
+}
+.clientInfo p {
+  color: #9ca3af;
+  font-size: 12px;
+  margin: 2px 0 0 0;
+}
+
+.statusBadge {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+}
+
+.whatsappTag {
+  font-size: 10px;
+  background-color: #25d366;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  margin-top: 4px;
+  display: inline-block;
+}
+
+.totalPrice {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 8px 0 0 0;
+}
+
+.productSummary {
+  margin-bottom: 16px;
+}
+.productSummary p {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+.productSummary div {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.progressBarContainer {
+  width: 100%;
+  height: 6px;
+  background-color: #f3f4f6;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progressBar {
+  height: 100%;
+  background-color: #22c55e;
+  transition: width 0.3s ease;
+}
+
+.actionsContainer {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* --- Vista: Detalle de Pedido --- */
+.detailHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.productListItem {
+  padding: 16px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.productListItemInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.productListItem p:first-child {
+  font-weight: 500;
+  margin: 0;
+}
+
+.productListItem p:last-child {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 2px 0 0 0;
+}
+
+.variantsDetailBox {
+  background-color: #f8fafc;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.variantsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.variantChip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background-color: white;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.totalSection {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 2px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.totalSection span:first-child {
+  font-size: 18px;
+  font-weight: 600;
+}
+.totalSection span:last-child {
+  font-size: 20px;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.fullWidthButton {
+  composes: buttonPrimary;
+  width: 100%;
+  padding: 16px;
+  font-size: 16px;
+  border-radius: 12px;
+}
+
+/* --- Vista: Modo Depósito --- */
+.depositoHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  background-color: #1f2937;
+  color: white;
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.depositoHeader button {
+  border-color: #374151;
+}
+
+.depositoHeader button:hover {
+  background-color: #374151;
+}
+
+.progressStats {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 12px;
+}
+.progressStats .completed { color: #22c55e; }
+.progressStats .outOfStock { color: #ef4444; }
+.progressStats .pending { color: #6b7280; }
+
+.preparationCard {
+  composes: card;
+  border-width: 2px;
+}
+
+.preparationCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+.preparationCardHeader h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+.preparationCardHeader p {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 4px 0 0 0;
+}
+
+.variantItem {
+  margin-bottom: 16px;
+  padding: 16px;
+  background-color: #fafafa;
+  border-radius: 8px;
+}
+
+.quantityControl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.quantityButton {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background-color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quantityInput {
+  width: 60px;
+  height: 36px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  border: 2px solid #3b82f6;
+  border-radius: 6px;
+  outline: none;
+}
+
+.quickActionButton {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.quickActionButtonAll {
+  composes: quickActionButton;
+  border: 1px solid #3b82f6;
+  background-color: #eff6ff;
+  color: #1e40af;
+}
+
+.quickActionButtonNone {
+  composes: quickActionButton;
+  border: 1px solid #6b7280;
+  background-color: #f9fafb;
+  color: #374151;
+}
+
+.infoBox {
+  padding: 8px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+
+.infoBoxSuccess {
+  composes: infoBox;
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.infoBoxDanger {
+  composes: infoBox;
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.variantActionButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.variantActionButtons button {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.commentTextarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  resize: vertical;
+  font-size: 14px;
+  outline: none;
+}
+
+.finalizeButton {
+  composes: button;
+  width: 100%;
+  padding: 16px;
+  margin-top: 20px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* --- Modal --- */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  background-color: white;
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.inputField {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+}
