@@ -66,8 +66,20 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
     error: null
   })
 
-  useEffect(() => {
-    const cargarEstadisticas = async () => {
+  // 💱 Tipo de cambio USD → UYU
+  const [tipoCambio, setTipoCambio] = useState<number>(() => {
+    const saved = localStorage.getItem('erp-tipo-cambio')
+    return saved ? parseFloat(saved) : 41
+  })
+
+  const actualizarTipoCambio = (nuevoTipo: number) => {
+    setTipoCambio(nuevoTipo)
+    localStorage.setItem('erp-tipo-cambio', nuevoTipo.toString())
+    // Recalcular estadísticas con nuevo tipo de cambio
+    cargarEstadisticas()
+  }
+
+  const cargarEstadisticas = async () => {
       try {
         console.log('📊 Cargando estadísticas desde Supabase...')
         
@@ -169,17 +181,18 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
         const productosRentables = productosConCosto
           .map(p => {
             const precioVenta = p.precio_venta || 0
-            const precioCosto = p.precio_costo || 0
-            const margenBruto = precioVenta - precioCosto
-            const porcentajeGanancia = precioCosto > 0 ? ((margenBruto / precioCosto) * 100) : 0
+            const precioCostoUSD = p.precio_costo || 0
+            const precioCostoUYU = precioCostoUSD * tipoCambio // 💱 Convertir USD a UYU
+            const margenBruto = precioVenta - precioCostoUYU
+            const porcentajeGanancia = precioCostoUYU > 0 ? ((margenBruto / precioCostoUYU) * 100) : 0
             
-            console.log(`🔍 DEBUG - Producto ${p.codigo_producto}: venta=${precioVenta}, costo=${precioCosto}, ganancia=${porcentajeGanancia}%`)
+            console.log(`🔍 DEBUG - Producto ${p.codigo_producto}: venta=$${precioVenta} UYU, costo=$${precioCostoUSD} USD ($${precioCostoUYU} UYU), ganancia=${porcentajeGanancia.toFixed(1)}%`)
             
             return {
               codigo_producto: p.codigo_producto,
               descripcion: p.descripcion,
               precio_venta: precioVenta,
-              precio_costo: precioCosto,
+              precio_costo: precioCostoUYU, // Mostrar en UYU para consistencia
               margen_bruto: margenBruto,
               porcentaje_ganancia: porcentajeGanancia
             }
@@ -261,7 +274,9 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
         }))
       }
     }
+  }
 
+  useEffect(() => {
     cargarEstadisticas()
   }, [])
 
@@ -323,6 +338,49 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
 
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+      {/* 💱 Configuración de tipo de cambio */}
+      <div style={{
+        backgroundColor: '#f0f9ff',
+        border: '2px solid #0ea5e9',
+        borderRadius: '12px',
+        padding: '16px',
+        marginBottom: '24px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '12px'
+      }}>
+        <span style={{ fontSize: '14px', fontWeight: '600', color: '#0c4a6e' }}>
+          💱 Tipo de cambio USD → UYU:
+        </span>
+        <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#0ea5e9' }}>$</span>
+        <input
+          type="number"
+          value={tipoCambio}
+          onChange={(e) => {
+            const nuevoTipo = parseFloat(e.target.value) || 0
+            if (nuevoTipo > 0) {
+              actualizarTipoCambio(nuevoTipo)
+            }
+          }}
+          style={{
+            width: '80px',
+            padding: '8px 12px',
+            border: '2px solid #0ea5e9',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            textAlign: 'center',
+            color: '#0c4a6e'
+          }}
+          step="0.1"
+          min="1"
+        />
+        <span style={{ fontSize: '14px', color: '#64748b' }}>
+          (Los costos están en USD, se convierten automáticamente)
+        </span>
+      </div>
+
       {/* Header */}
       <div style={{ marginBottom: '32px', textAlign: 'center' }}>
         <h1 style={{
@@ -657,7 +715,7 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
             alignItems: 'center',
             gap: '8px'
           }}>
-            💰 TOP 10 - Productos Más Rentables (Margen Bruto)
+            💰 TOP 10 - Productos Más Rentables (USD→UYU)
           </h3>
           
           <div style={{
@@ -673,7 +731,7 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
               margin: 0,
               textAlign: 'center'
             }}>
-              ⚠️ <strong>Nota:</strong> Cálculo base sin costos de importación. Ideal para priorizar productos al importar desde China.
+              ✅ <strong>Costos convertidos:</strong> USD→UYU al tipo de cambio configurado. Margen bruto sin costos de importación/logística.
             </p>
           </div>
           
