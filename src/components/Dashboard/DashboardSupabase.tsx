@@ -24,9 +24,13 @@ interface ProductoRentable {
   codigo_producto: string
   descripcion: string
   precio_venta: number
-  precio_costo: number
+  precio_costo_china: number
+  precio_costo_bruto: number
+  precio_costo_neto: number
   margen_bruto: number
-  porcentaje_ganancia: number
+  margen_neto: number
+  porcentaje_ganancia_bruto: number
+  porcentaje_ganancia_neto: number
 }
 
 interface VentasPorMes {
@@ -72,10 +76,23 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
     return saved ? parseFloat(saved) : 41
   })
 
+  // 📦 Factor de costos de importación (incluye logística, aranceles, etc.)
+  const [factorImportacion, setFactorImportacion] = useState<number>(() => {
+    const saved = localStorage.getItem('erp-factor-importacion')
+    return saved ? parseFloat(saved) : 1.35
+  })
+
   const actualizarTipoCambio = (nuevoTipo: number) => {
     setTipoCambio(nuevoTipo)
     localStorage.setItem('erp-tipo-cambio', nuevoTipo.toString())
     // Recalcular estadísticas con nuevo tipo de cambio
+    cargarEstadisticas()
+  }
+
+  const actualizarFactorImportacion = (nuevoFactor: number) => {
+    setFactorImportacion(nuevoFactor)
+    localStorage.setItem('erp-factor-importacion', nuevoFactor.toString())
+    // Recalcular estadísticas con nuevo factor
     cargarEstadisticas()
   }
 
@@ -182,22 +199,31 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
           .map(p => {
             const precioVenta = p.precio_venta || 0
             const precioCostoUSD = p.precio_costo || 0
-            const precioCostoUYU = precioCostoUSD * tipoCambio // 💱 Convertir USD a UYU
-            const margenBruto = precioVenta - precioCostoUYU
-            const porcentajeGanancia = precioCostoUYU > 0 ? ((margenBruto / precioCostoUYU) * 100) : 0
+            const precioCostoBrutoUYU = precioCostoUSD * tipoCambio // 💱 Solo tipo de cambio
+            const precioCostoNetoUYU = precioCostoBrutoUYU * factorImportacion // 📦 + Costos importación
             
-            console.log(`🔍 DEBUG - Producto ${p.codigo_producto}: venta=$${precioVenta} UYU, costo=$${precioCostoUSD} USD ($${precioCostoUYU} UYU), ganancia=${porcentajeGanancia.toFixed(1)}%`)
+            const margenBruto = precioVenta - precioCostoBrutoUYU
+            const margenNeto = precioVenta - precioCostoNetoUYU
+            
+            const porcentajeGananciaBruto = precioCostoBrutoUYU > 0 ? ((margenBruto / precioCostoBrutoUYU) * 100) : 0
+            const porcentajeGananciaNeto = precioCostoNetoUYU > 0 ? ((margenNeto / precioCostoNetoUYU) * 100) : 0
+            
+            console.log(`🔍 DEBUG - Producto ${p.codigo_producto}: venta=$${precioVenta} UYU, costo China=$${precioCostoUSD} USD, bruto=$${precioCostoBrutoUYU.toFixed(2)} UYU, neto=$${precioCostoNetoUYU.toFixed(2)} UYU, ganancia bruta=${porcentajeGananciaBruto.toFixed(1)}%, ganancia neta=${porcentajeGananciaNeto.toFixed(1)}%`)
             
             return {
               codigo_producto: p.codigo_producto,
               descripcion: p.descripcion,
               precio_venta: precioVenta,
-              precio_costo: precioCostoUYU, // Mostrar en UYU para consistencia
+              precio_costo_china: precioCostoUSD,
+              precio_costo_bruto: precioCostoBrutoUYU,
+              precio_costo_neto: precioCostoNetoUYU,
               margen_bruto: margenBruto,
-              porcentaje_ganancia: porcentajeGanancia
+              margen_neto: margenNeto,
+              porcentaje_ganancia_bruto: porcentajeGananciaBruto,
+              porcentaje_ganancia_neto: porcentajeGananciaNeto
             }
           })
-          .sort((a, b) => b.porcentaje_ganancia - a.porcentaje_ganancia)
+          .sort((a, b) => b.porcentaje_ganancia_neto - a.porcentaje_ganancia_neto)
           .slice(0, 10)
 
         console.log('💰 Top productos rentables:', productosRentables)
@@ -337,47 +363,100 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
 
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-      {/* 💱 Configuración de tipo de cambio */}
+      {/* 💱 Configuración de costos */}
       <div style={{
         backgroundColor: '#f0f9ff',
         border: '2px solid #0ea5e9',
         borderRadius: '12px',
-        padding: '16px',
-        marginBottom: '24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '12px'
+        padding: '20px',
+        marginBottom: '24px'
       }}>
-        <span style={{ fontSize: '14px', fontWeight: '600', color: '#0c4a6e' }}>
-          💱 Tipo de cambio USD → UYU:
-        </span>
-        <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#0ea5e9' }}>$</span>
-        <input
-          type="number"
-          value={tipoCambio}
-          onChange={(e) => {
-            const nuevoTipo = parseFloat(e.target.value) || 0
-            if (nuevoTipo > 0) {
-              actualizarTipoCambio(nuevoTipo)
-            }
-          }}
-          style={{
-            width: '80px',
-            padding: '8px 12px',
-            border: '2px solid #0ea5e9',
-            borderRadius: '8px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            textAlign: 'center',
-            color: '#0c4a6e'
-          }}
-          step="0.1"
-          min="1"
-        />
-        <span style={{ fontSize: '14px', color: '#64748b' }}>
-          (Los costos están en USD, se convierten automáticamente)
-        </span>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '20px',
+          alignItems: 'center'
+        }}>
+          {/* Tipo de cambio */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <span style={{ fontSize: '14px', fontWeight: '600', color: '#0c4a6e' }}>
+              💱 Tipo de cambio USD → UYU:
+            </span>
+            <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#0ea5e9' }}>$</span>
+            <input
+              type="number"
+              value={tipoCambio}
+              onChange={(e) => {
+                const nuevoTipo = parseFloat(e.target.value) || 0
+                if (nuevoTipo > 0) {
+                  actualizarTipoCambio(nuevoTipo)
+                }
+              }}
+              style={{
+                width: '80px',
+                padding: '8px 12px',
+                border: '2px solid #0ea5e9',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                textAlign: 'center',
+                color: '#0c4a6e'
+              }}
+              step="0.1"
+              min="1"
+            />
+          </div>
+
+          {/* Factor de importación */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <span style={{ fontSize: '14px', fontWeight: '600', color: '#0c4a6e' }}>
+              📦 Factor costos importación:
+            </span>
+            <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#0ea5e9' }}>×</span>
+            <input
+              type="number"
+              value={factorImportacion}
+              onChange={(e) => {
+                const nuevoFactor = parseFloat(e.target.value) || 0
+                if (nuevoFactor > 0) {
+                  actualizarFactorImportacion(nuevoFactor)
+                }
+              }}
+              style={{
+                width: '80px',
+                padding: '8px 12px',
+                border: '2px solid #0ea5e9',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                textAlign: 'center',
+                color: '#0c4a6e'
+              }}
+              step="0.05"
+              min="1"
+            />
+          </div>
+        </div>
+        
+        <div style={{
+          marginTop: '12px',
+          padding: '12px',
+          backgroundColor: '#e0f2fe',
+          borderRadius: '8px',
+          textAlign: 'center'
+        }}>
+          <p style={{ fontSize: '14px', color: '#0c4a6e', margin: 0 }}>
+            💡 <strong>Cálculo:</strong> Costo China × ${tipoCambio} × {factorImportacion} = Costo real en depósito
+          </p>
+        </div>
       </div>
 
       {/* Header */}
@@ -714,7 +793,7 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
             alignItems: 'center',
             gap: '8px'
           }}>
-            💰 TOP 10 - Productos Más Rentables (USD→UYU)
+            💰 TOP 10 - Productos Más Rentables (Margen NETO)
           </h3>
           
           <div style={{
@@ -730,7 +809,7 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
               margin: 0,
               textAlign: 'center'
             }}>
-              ✅ <strong>Costos convertidos:</strong> USD→UYU al tipo de cambio configurado. Margen bruto sin costos de importación/logística.
+              🎯 <strong>Rentabilidad REAL:</strong> Incluye costos de importación/logística. Ordenado por margen NETO para decisiones de negocio.
             </p>
           </div>
           
@@ -792,28 +871,36 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
                   display: 'grid', 
                   gridTemplateColumns: '1fr 1fr', 
                   gap: '8px',
-                  fontSize: '12px'
+                  fontSize: '11px'
                 }}>
                   <div>
-                    <span style={{ color: '#6b7280' }}>Costo: </span>
-                    <span style={{ fontWeight: 'bold' }}>${producto.precio_costo.toFixed(2)}</span>
+                    <span style={{ color: '#6b7280' }}>China: </span>
+                    <span style={{ fontWeight: 'bold' }}>${producto.precio_costo_china.toFixed(2)} USD</span>
                   </div>
                   <div>
                     <span style={{ color: '#6b7280' }}>Venta: </span>
-                    <span style={{ fontWeight: 'bold' }}>${producto.precio_venta.toFixed(2)}</span>
+                    <span style={{ fontWeight: 'bold' }}>${producto.precio_venta.toFixed(2)} UYU</span>
                   </div>
                   <div>
-                    <span style={{ color: '#6b7280' }}>Margen: </span>
-                    <span style={{ fontWeight: 'bold', color: '#10b981' }}>${producto.margen_bruto.toFixed(2)}</span>
+                    <span style={{ color: '#6b7280' }}>Costo bruto: </span>
+                    <span style={{ fontWeight: 'bold' }}>${producto.precio_costo_bruto.toFixed(2)}</span>
                   </div>
                   <div>
-                    <span style={{ color: '#6b7280' }}>Ganancia: </span>
+                    <span style={{ color: '#6b7280' }}>Costo neto: </span>
+                    <span style={{ fontWeight: 'bold' }}>${producto.precio_costo_neto.toFixed(2)}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: '#6b7280' }}>Margen bruto: </span>
+                    <span style={{ fontWeight: 'bold', color: '#10b981' }}>{producto.porcentaje_ganancia_bruto.toFixed(0)}%</span>
+                  </div>
+                  <div>
+                    <span style={{ color: '#6b7280' }}>Margen NETO: </span>
                     <span style={{ 
                       fontWeight: 'bold', 
                       color: '#8b5cf6',
                       fontSize: '14px'
                     }}>
-                      {producto.porcentaje_ganancia.toFixed(0)}%
+                      {producto.porcentaje_ganancia_neto.toFixed(0)}%
                     </span>
                   </div>
                 </div>
