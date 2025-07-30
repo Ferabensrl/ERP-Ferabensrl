@@ -9,7 +9,8 @@ import {
   ArrowLeft,
   MessageSquare,
   Eye,
-  User
+  User,
+  Trash2
 } from 'lucide-react';
 import styles from './Pedidos.module.css';
 // ✅ ÚNICA ADICIÓN: Import de Supabase
@@ -835,6 +836,57 @@ if (pedidoSeleccionado.esDeWhatsApp) {
     }
   };
 
+  // ✅ NUEVA FUNCIÓN: Eliminar pedido
+  const eliminarPedido = async (pedido: Pedido) => {
+    const confirmar = confirm(
+      `⚠️ ¿Estás seguro de eliminar este pedido?\n\n` +
+      `📋 ${pedido.numero}\n` +
+      `👤 ${pedido.cliente.nombre}\n` +
+      `📅 ${pedido.fecha}\n\n` +
+      `❌ Esta acción no se puede deshacer`
+    );
+
+    if (!confirmar) return;
+
+    try {
+      console.log('🗑️ Eliminando pedido:', pedido.id);
+      
+      // Eliminar items del pedido primero (por foreign key)
+      const { error: itemsError } = await supabase
+        .from('pedido_items')
+        .delete()
+        .eq('pedido_id', parseInt(pedido.id));
+
+      if (itemsError) {
+        console.error('❌ Error eliminando items:', itemsError);
+        throw itemsError;
+      }
+
+      // Eliminar el pedido principal
+      const { error: pedidoError } = await supabase
+        .from('pedidos')
+        .delete()
+        .eq('id', parseInt(pedido.id));
+
+      if (pedidoError) {
+        console.error('❌ Error eliminando pedido:', pedidoError);
+        throw pedidoError;
+      }
+
+      // Limpiar progreso guardado si existe
+      limpiarProgreso(pedido.id);
+
+      // Actualizar estado local - remover el pedido eliminado
+      setPedidos(prev => prev.filter(p => p.id !== pedido.id));
+
+      alert(`✅ Pedido eliminado exitosamente\n\n📋 ${pedido.numero} ha sido eliminado del sistema`);
+      
+    } catch (error) {
+      console.error('❌ Error eliminando pedido:', error);
+      alert(`❌ Error al eliminar el pedido\n\n${error}`);
+    }
+  };
+
   // ✅ NUEVA FUNCIÓN: Manejar salida del depósito con confirmación (EXACTAMENTE IGUAL)
   const salirDelDeposito = () => {
     if (hayProgresoPorGuardar()) {
@@ -1060,6 +1112,21 @@ if (pedidoSeleccionado.esDeWhatsApp) {
                       </span>
                     </div>
                   )}
+
+                  {/* ✅ NUEVO: Botón eliminar - disponible para todos los estados */}
+                  <button
+                    onClick={() => eliminarPedido(pedido)}
+                    className={styles.buttonSecondary}
+                    style={{
+                      backgroundColor: '#fee2e2', 
+                      borderColor: '#fca5a5',
+                      color: '#dc2626'
+                    }}
+                    title="Eliminar pedido"
+                  >
+                    <Trash2 size={16} />
+                    Eliminar
+                  </button>
                 </div>
               </div>
             );

@@ -19,7 +19,7 @@ import {
 import { supabase } from '../../lib/supabaseClient';
 import * as XLSX from 'xlsx';
 
-// MANTENER EXACTA LA INTERFAZ ACTUAL - NO CAMBIAR
+// ✅ INTERFAZ CORREGIDA según CSV real de Supabase
 interface ProductoInventario {
   id: number;
   codigo_producto: string;
@@ -29,10 +29,16 @@ interface ProductoInventario {
   stock: number;
   codigo_barras?: string;
   stock_minimo?: number;
-  // NUEVOS CAMPOS OPCIONALES para funcionalidades avanzadas
   precio_costo?: number;
-  estado?: 'activo' | 'inactivo';
-  fecha_actualizacion?: string;
+  activo?: boolean; // ✅ Campo real en Supabase (boolean)
+  updated_at?: string; // ✅ Campo real en Supabase
+  created_at?: string;
+  // Campos adicionales del CSV que podrían ser útiles
+  cantidad_pedida_original?: number;
+  codigo_proveedor?: string;
+  archivo_proveedor?: string;
+  numero_orden?: string;
+  fecha_importacion?: string;
 }
 
 interface ProductoExcel {
@@ -66,6 +72,10 @@ const Inventario: React.FC = () => {
   const [filtroEstado, setFiltroEstado] = useState('Todos');
   const [importProgress, setImportProgress] = useState(0);
   const [importMessage, setImportMessage] = useState('');
+  
+  // ✅ NUEVOS ESTADOS PARA EDICIÓN INDIVIDUAL
+  const [productoEditando, setProductoEditando] = useState<number | null>(null);
+  const [datosEdicion, setDatosEdicion] = useState<Partial<ProductoInventario>>({});
 
   // DETECCIÓN DE MÓVIL
   useEffect(() => {
@@ -95,6 +105,7 @@ const Inventario: React.FC = () => {
       const { data, error: supabaseError } = await supabase
         .from('inventario')
         .select('*')
+        .eq('activo', true)
         .order('codigo_producto');
       
       if (supabaseError) {
@@ -123,8 +134,8 @@ const Inventario: React.FC = () => {
     const matchCategory = selectedCategory === 'Todas' || producto.categoria === selectedCategory;
     
     const matchEstado = filtroEstado === 'Todos' || 
-      (filtroEstado === 'Activos' && (producto.estado === 'activo' || !producto.estado)) ||
-      (filtroEstado === 'Inactivos' && producto.estado === 'inactivo') ||
+      (filtroEstado === 'Activos' && (producto.activo === true || producto.activo === undefined)) ||
+      (filtroEstado === 'Inactivos' && producto.activo === false) ||
       (filtroEstado === 'Sin Stock' && producto.stock === 0);
     
     return matchSearchTerm && matchCategory && matchEstado;
@@ -164,8 +175,8 @@ const Inventario: React.FC = () => {
       const { error } = await supabase
         .from('inventario')
         .update({ 
-          estado: nuevoEstado,
-          fecha_actualizacion: new Date().toISOString()
+          activo: nuevoEstado === 'activo',
+          updated_at: new Date().toISOString()
         })
         .in('id', idsSeleccionados);
       
@@ -174,7 +185,7 @@ const Inventario: React.FC = () => {
       // Actualizar estado local
       setProductos(productos.map(p => 
         productosSeleccionados.has(p.id) 
-          ? { ...p, estado: nuevoEstado }
+          ? { ...p, activo: nuevoEstado === 'activo' }
           : p
       ));
       
@@ -215,6 +226,75 @@ const Inventario: React.FC = () => {
       console.error('Error eliminando productos:', error);
       alert('❌ Error al eliminar productos');
     }
+  };
+
+  // ✅ NUEVAS FUNCIONES PARA EDICIÓN INDIVIDUAL
+  const iniciarEdicionProducto = (producto: ProductoInventario) => {
+    setProductoEditando(producto.id);
+    setDatosEdicion({
+      codigo_producto: producto.codigo_producto,
+      descripcion: producto.descripcion,
+      categoria: producto.categoria,
+      stock: producto.stock,
+      precio_venta: producto.precio_venta,
+      precio_costo: producto.precio_costo || 0,
+      codigo_barras: producto.codigo_barras || '',
+      stock_minimo: producto.stock_minimo || 0
+    });
+  };
+
+  const cancelarEdicion = () => {
+    setProductoEditando(null);
+    setDatosEdicion({});
+  };
+
+  const guardarEdicionProducto = async () => {
+    if (!productoEditando || !datosEdicion.codigo_producto || !datosEdicion.descripcion) {
+      alert('❌ Por favor completa todos los campos obligatorios (código y descripción)');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('inventario')
+        .update({
+          codigo_producto: datosEdicion.codigo_producto,
+          descripcion: datosEdicion.descripcion,
+          categoria: datosEdicion.categoria,
+          stock: datosEdicion.stock,
+          precio_venta: datosEdicion.precio_venta,
+          precio_costo: datosEdicion.precio_costo,
+          codigo_barras: datosEdicion.codigo_barras,
+          stock_minimo: datosEdicion.stock_minimo,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', productoEditando);
+
+      if (error) throw error;
+
+      // Actualizar estado local
+      setProductos(productos.map(p => 
+        p.id === productoEditando 
+          ? { ...p, ...datosEdicion } as ProductoInventario
+          : p
+      ));
+
+      setProductoEditando(null);
+      setDatosEdicion({});
+      
+      alert('✅ Producto actualizado exitosamente');
+      
+    } catch (error) {
+      console.error('Error actualizando producto:', error);
+      alert('❌ Error al actualizar el producto');
+    }
+  };
+
+  const actualizarDatoEdicion = (campo: keyof ProductoInventario, valor: any) => {
+    setDatosEdicion(prev => ({
+      ...prev,
+      [campo]: valor
+    }));
   };
   // IMPORTADOR DE EXCEL
   const importarProductosExcel = async (file: File) => {
@@ -282,7 +362,7 @@ const Inventario: React.FC = () => {
             precio_costo: producto.precio_fob,
             stock: producto.cantidad_confirmada,
             codigo_barras: producto.codigo_barras || undefined,
-            estado: producto.estado === 'Pendiente' ? 'activo' : 'inactivo'
+            activo: producto.activo !== false
           });
         }
       }
@@ -352,8 +432,8 @@ const Inventario: React.FC = () => {
               precio_costo: producto.precio_costo,
               stock: producto.stock,
               codigo_barras: producto.codigo_barras,
-              estado: producto.estado,
-              fecha_actualizacion: producto.fecha_actualizacion
+              activo: producto.activo,
+              updated_at: producto.updated_at
             })
             .eq('id', producto.id);
           
@@ -859,13 +939,13 @@ const Inventario: React.FC = () => {
                         </h3>
                         <span style={{
                           padding: '4px 8px',
-                          backgroundColor: (producto.estado === 'inactivo') ? '#fef2f2' : '#dcfce7',
-                          color: (producto.estado === 'inactivo') ? '#dc2626' : '#166534',
+                          backgroundColor: (producto.activo === false) ? '#fef2f2' : '#dcfce7',
+                          color: (producto.activo === false) ? '#dc2626' : '#166534',
                           borderRadius: '12px',
                           fontSize: '12px',
                           fontWeight: '500'
                         }}>
-                          {(producto.estado === 'inactivo') ? '❌ Inactivo' : '✅ Activo'}
+                          {(producto.activo === false) ? '❌ Inactivo' : '✅ Activo'}
                         </span>
                       </div>
                       
@@ -977,6 +1057,9 @@ const Inventario: React.FC = () => {
                   <th style={{ padding: '16px', textAlign: 'center', fontSize: '14px', fontWeight: '600', color: '#4b5563', borderBottom: '1px solid #e5e7eb' }}>
                     Estado
                   </th>
+                  <th style={{ padding: '16px', textAlign: 'center', fontSize: '14px', fontWeight: '600', color: '#4b5563', borderBottom: '1px solid #e5e7eb' }}>
+                    Acciones
+                  </th>
                 </tr>
               </thead>
               
@@ -984,7 +1067,7 @@ const Inventario: React.FC = () => {
                 {productosFiltrados.length === 0 ? (
                   <tr>
                     <td 
-                      colSpan={modoEdicion ? 8 : 7} 
+                      colSpan={modoEdicion ? 9 : 8} 
                       style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}
                     >
                       <AlertTriangle size={24} style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '8px', color: '#f59e0b' }} />
@@ -1010,60 +1093,227 @@ const Inventario: React.FC = () => {
                         </td>
                       )}
                       
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#1f2937', fontWeight: '600' }}>
-                        {producto.codigo_producto}
+                      {/* ✅ CÓDIGO - Editable si está en edición individual */}
+                      <td style={{ padding: '8px', fontSize: '14px', color: '#1f2937', fontWeight: '600' }}>
+                        {productoEditando === producto.id ? (
+                          <input
+                            type="text"
+                            value={datosEdicion.codigo_producto || ''}
+                            onChange={(e) => actualizarDatoEdicion('codigo_producto', e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '6px 8px',
+                              border: '2px solid #3b82f6',
+                              borderRadius: '4px',
+                              fontSize: '14px'
+                            }}
+                          />
+                        ) : (
+                          producto.codigo_producto
+                        )}
                       </td>
                       
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#1f2937' }}>
-                        {producto.descripcion}
+                      {/* ✅ DESCRIPCIÓN - Editable */}
+                      <td style={{ padding: '8px', fontSize: '14px', color: '#1f2937' }}>
+                        {productoEditando === producto.id ? (
+                          <input
+                            type="text"
+                            value={datosEdicion.descripcion || ''}
+                            onChange={(e) => actualizarDatoEdicion('descripcion', e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '6px 8px',
+                              border: '2px solid #3b82f6',
+                              borderRadius: '4px',
+                              fontSize: '14px'
+                            }}
+                          />
+                        ) : (
+                          producto.descripcion
+                        )}
                       </td>
                       
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#1f2937' }}>
-                        {producto.categoria}
+                      {/* ✅ CATEGORÍA - Editable */}
+                      <td style={{ padding: '8px', fontSize: '14px', color: '#1f2937' }}>
+                        {productoEditando === producto.id ? (
+                          <input
+                            type="text"
+                            value={datosEdicion.categoria || ''}
+                            onChange={(e) => actualizarDatoEdicion('categoria', e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '6px 8px',
+                              border: '2px solid #3b82f6',
+                              borderRadius: '4px',
+                              fontSize: '14px'
+                            }}
+                          />
+                        ) : (
+                          producto.categoria
+                        )}
                       </td>
                       
+                      {/* ✅ CÓDIGO DE BARRAS - Editable */}
                       <td style={{ 
-                        padding: '16px', 
+                        padding: '8px', 
                         fontSize: '12px', 
                         color: '#374151',
                         fontFamily: 'monospace',
-                        backgroundColor: '#f9fafb',
+                        backgroundColor: productoEditando === producto.id ? 'white' : '#f9fafb',
                         maxWidth: '150px'
                       }}>
-                        {producto.codigo_barras || '-'}
+                        {productoEditando === producto.id ? (
+                          <input
+                            type="text"
+                            value={datosEdicion.codigo_barras || ''}
+                            onChange={(e) => actualizarDatoEdicion('codigo_barras', e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '6px 8px',
+                              border: '2px solid #3b82f6',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              fontFamily: 'monospace'
+                            }}
+                          />
+                        ) : (
+                          producto.codigo_barras || '-'
+                        )}
                       </td>
                       
+                      {/* ✅ STOCK - Editable (EL MÁS IMPORTANTE) */}
                       <td style={{ 
-                        padding: '16px', 
+                        padding: '8px', 
                         fontSize: '14px', 
                         textAlign: 'right',
                         fontWeight: '600',
                         color: producto.stock === 0 ? '#dc2626' : '#059669'
                       }}>
-                        {producto.stock}
+                        {productoEditando === producto.id ? (
+                          <input
+                            type="number"
+                            value={datosEdicion.stock || 0}
+                            onChange={(e) => actualizarDatoEdicion('stock', parseInt(e.target.value) || 0)}
+                            style={{
+                              width: '80px',
+                              padding: '6px 8px',
+                              border: '2px solid #10b981',
+                              borderRadius: '4px',
+                              fontSize: '14px',
+                              textAlign: 'right',
+                              fontWeight: '600'
+                            }}
+                          />
+                        ) : (
+                          producto.stock
+                        )}
                       </td>
                       
+                      {/* ✅ PRECIO VENTA - Editable */}
                       <td style={{ 
-                        padding: '16px', 
+                        padding: '8px', 
                         fontSize: '14px', 
                         textAlign: 'right',
                         fontWeight: '600',
                         color: '#059669'
                       }}>
-                        ${producto.precio_venta}
+                        {productoEditando === producto.id ? (
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={datosEdicion.precio_venta || 0}
+                            onChange={(e) => actualizarDatoEdicion('precio_venta', parseFloat(e.target.value) || 0)}
+                            style={{
+                              width: '90px',
+                              padding: '6px 8px',
+                              border: '2px solid #10b981',
+                              borderRadius: '4px',
+                              fontSize: '14px',
+                              textAlign: 'right',
+                              fontWeight: '600'
+                            }}
+                          />
+                        ) : (
+                          `$${producto.precio_venta}`
+                        )}
                       </td>
                       
+                      {/* ✅ ESTADO - No editable por ahora */}
                       <td style={{ padding: '16px', textAlign: 'center' }}>
                         <span style={{
                           padding: '4px 12px',
-                          backgroundColor: (producto.estado === 'inactivo') ? '#fef2f2' : '#dcfce7',
-                          color: (producto.estado === 'inactivo') ? '#dc2626' : '#166534',
+                          backgroundColor: (producto.activo === false) ? '#fef2f2' : '#dcfce7',
+                          color: (producto.activo === false) ? '#dc2626' : '#166534',
                           borderRadius: '12px',
                           fontSize: '12px',
                           fontWeight: '500'
                         }}>
-                          {(producto.estado === 'inactivo') ? '❌ Inactivo' : '✅ Activo'}
+                          {(producto.activo === false) ? '❌ Inactivo' : '✅ Activo'}
                         </span>
+                      </td>
+
+                      {/* ✅ NUEVA COLUMNA DE ACCIONES */}
+                      <td style={{ padding: '8px', textAlign: 'center' }}>
+                        {productoEditando === producto.id ? (
+                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                            <button
+                              onClick={guardarEdicionProducto}
+                              style={{
+                                padding: '6px 12px',
+                                backgroundColor: '#10b981',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Check size={14} />
+                              Guardar
+                            </button>
+                            <button
+                              onClick={cancelarEdicion}
+                              style={{
+                                padding: '6px 12px',
+                                backgroundColor: '#ef4444',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <X size={14} />
+                              Cancelar
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => iniciarEdicionProducto(producto)}
+                            style={{
+                              padding: '6px 12px',
+                              backgroundColor: '#3b82f6',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              margin: '0 auto'
+                            }}
+                          >
+                            <Edit3 size={14} />
+                            Editar
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))
