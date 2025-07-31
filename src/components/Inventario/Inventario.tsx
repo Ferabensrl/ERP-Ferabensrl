@@ -929,14 +929,34 @@ const Inventario: React.FC = () => {
                         justifyContent: 'space-between',
                         marginBottom: '8px'
                       }}>
-                        <h3 style={{
-                          margin: 0,
-                          fontSize: '18px',
-                          fontWeight: '600',
-                          color: '#1f2937'
-                        }}>
-                          {producto.codigo_producto}
-                        </h3>
+                        {productoEditando === producto.id ? (
+                          <input
+                            type="text"
+                            value={datosEdicion.codigo_producto || ''}
+                            onChange={(e) => actualizarDatoEdicion('codigo_producto', e.target.value)}
+                            style={{
+                              padding: '8px 12px',
+                              border: '2px solid #3b82f6',
+                              borderRadius: '6px',
+                              fontSize: '18px',
+                              fontWeight: '600',
+                              color: '#1f2937',
+                              backgroundColor: 'white',
+                              flex: 1,
+                              marginRight: '12px'
+                            }}
+                            placeholder="Código producto"
+                          />
+                        ) : (
+                          <h3 style={{
+                            margin: 0,
+                            fontSize: '18px',
+                            fontWeight: '600',
+                            color: '#1f2937'
+                          }}>
+                            {producto.codigo_producto}
+                          </h3>
+                        )}
                         <span style={{
                           padding: '4px 8px',
                           backgroundColor: (producto.activo === false) ? '#fef2f2' : '#dcfce7',
@@ -950,32 +970,87 @@ const Inventario: React.FC = () => {
                       </div>
                       
                       {/* DESCRIPCIÓN */}
-                      <p style={{
-                        margin: '0 0 8px 0',
-                        fontSize: '16px',
-                        color: '#4b5563',
-                        lineHeight: '1.4'
-                      }}>
-                        {producto.descripcion}
-                      </p>
+                      {productoEditando === producto.id ? (
+                        <input
+                          type="text"
+                          value={datosEdicion.descripcion || ''}
+                          onChange={(e) => actualizarDatoEdicion('descripcion', e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            border: '2px solid #3b82f6',
+                            borderRadius: '6px',
+                            fontSize: '16px',
+                            margin: '0 0 8px 0',
+                            lineHeight: '1.4',
+                            fontWeight: '500'
+                          }}
+                          placeholder="Descripción del producto"
+                        />
+                      ) : (
+                        <p style={{
+                          margin: '0 0 8px 0',
+                          fontSize: '16px',
+                          color: '#4b5563',
+                          lineHeight: '1.4'
+                        }}>
+                          {producto.descripcion}
+                        </p>
+                      )}
                       
                       {/* CATEGORÍA */}
                       <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '12px' }}>
-                        📂 {producto.categoria}
+                        📂 {productoEditando === producto.id ? (
+                          <input
+                            type="text"
+                            value={datosEdicion.categoria || ''}
+                            onChange={(e) => actualizarDatoEdicion('categoria', e.target.value)}
+                            style={{
+                              width: '200px',
+                              padding: '4px 8px',
+                              border: '2px solid #3b82f6',
+                              borderRadius: '4px',
+                              fontSize: '14px',
+                              marginLeft: '8px'
+                            }}
+                            placeholder="Categoría"
+                          />
+                        ) : (
+                          producto.categoria
+                        )}
                       </div>
                       
                       {/* CÓDIGO DE BARRAS */}
-                      {producto.codigo_barras && (
+                      {(producto.codigo_barras || productoEditando === producto.id) && (
                         <div style={{
                           fontSize: '12px',
                           fontFamily: 'monospace',
                           color: '#374151',
-                          backgroundColor: '#f9fafb',
+                          backgroundColor: productoEditando === producto.id ? 'white' : '#f9fafb',
                           padding: '6px 8px',
                           borderRadius: '4px',
-                          marginBottom: '12px'
+                          marginBottom: '12px',
+                          border: productoEditando === producto.id ? '2px solid #3b82f6' : 'none'
                         }}>
-                          🔗 {producto.codigo_barras}
+                          🔗 {productoEditando === producto.id ? (
+                            <input
+                              type="text"
+                              value={datosEdicion.codigo_barras || ''}
+                              onChange={(e) => actualizarDatoEdicion('codigo_barras', e.target.value)}
+                              style={{
+                                width: '100%',
+                                padding: '4px',
+                                border: 'none',
+                                backgroundColor: 'transparent',
+                                fontSize: '12px',
+                                fontFamily: 'monospace',
+                                outline: 'none'
+                              }}
+                              placeholder="Código de barras (opcional)"
+                            />
+                          ) : (
+                            producto.codigo_barras
+                          )}
                         </div>
                       )}
                       
@@ -984,28 +1059,141 @@ const Inventario: React.FC = () => {
                         display: 'grid',
                         gridTemplateColumns: '1fr 1fr',
                         gap: '16px',
-                        fontSize: '14px'
+                        fontSize: '14px',
+                        marginBottom: '16px'
                       }}>
                         <div>
                           <span style={{ color: '#6b7280' }}>Stock:</span>
-                          <div style={{
-                            fontSize: '18px',
-                            fontWeight: '600',
-                            color: producto.stock === 0 ? '#dc2626' : '#059669'
-                          }}>
-                            {producto.stock}
-                          </div>
+                          {productoEditando === producto.id ? (
+                            <input
+                              type="number"
+                              value={datosEdicion.stock || 0}
+                              onChange={(e) => actualizarDatoEdicion('stock', parseInt(e.target.value) || 0)}
+                              style={{
+                                width: '100%',
+                                padding: '8px',
+                                border: '2px solid #10b981',
+                                borderRadius: '6px',
+                                fontSize: '18px',
+                                fontWeight: '600',
+                                color: '#059669',
+                                backgroundColor: 'white',
+                                marginTop: '4px'
+                              }}
+                            />
+                          ) : (
+                            <div style={{
+                              fontSize: '18px',
+                              fontWeight: '600',
+                              color: producto.stock === 0 ? '#dc2626' : '#059669'
+                            }}>
+                              {producto.stock}
+                            </div>
+                          )}
                         </div>
                         <div>
                           <span style={{ color: '#6b7280' }}>Precio:</span>
-                          <div style={{ 
-                            fontSize: '18px', 
-                            fontWeight: '600', 
-                            color: '#059669' 
-                          }}>
-                            ${producto.precio_venta}
-                          </div>
+                          {productoEditando === producto.id ? (
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={datosEdicion.precio_venta || 0}
+                              onChange={(e) => actualizarDatoEdicion('precio_venta', parseFloat(e.target.value) || 0)}
+                              style={{
+                                width: '100%',
+                                padding: '8px',
+                                border: '2px solid #10b981',
+                                borderRadius: '6px',
+                                fontSize: '18px',
+                                fontWeight: '600',
+                                color: '#059669',
+                                backgroundColor: 'white',
+                                marginTop: '4px'
+                              }}
+                            />
+                          ) : (
+                            <div style={{ 
+                              fontSize: '18px', 
+                              fontWeight: '600', 
+                              color: '#059669' 
+                            }}>
+                              ${producto.precio_venta}
+                            </div>
+                          )}
                         </div>
+                      </div>
+                      
+                      {/* ✅ BOTÓN EDITAR EN MÓVIL */}
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        marginTop: '12px'
+                      }}>
+                        {productoEditando === producto.id ? (
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={guardarEdicionProducto}
+                              style={{
+                                padding: '8px 16px',
+                                backgroundColor: '#10b981',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                fontSize: '14px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                minHeight: '44px',
+                                fontWeight: '500'
+                              }}
+                            >
+                              <Check size={16} />
+                              Guardar
+                            </button>
+                            <button
+                              onClick={cancelarEdicion}
+                              style={{
+                                padding: '8px 16px',
+                                backgroundColor: '#ef4444',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                fontSize: '14px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                minHeight: '44px',
+                                fontWeight: '500'
+                              }}
+                            >
+                              <X size={16} />
+                              Cancelar
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => iniciarEdicionProducto(producto)}
+                            style={{
+                              padding: '8px 16px',
+                              backgroundColor: '#3b82f6',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: '14px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              minHeight: '44px',
+                              fontWeight: '500'
+                            }}
+                          >
+                            <Edit3 size={16} />
+                            Editar
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
