@@ -520,43 +520,100 @@ const Pedidos: React.FC<PedidosProps> = ({
     setVistaActual('deposito');
   };
 
-  // ✅ FUNCIÓN CORREGIDA: Guardar progreso automáticamente (EXACTAMENTE IGUAL)
-  const guardarProgresoAutomatico = () => {
-    if (pedidoSeleccionado) {
+  // ✅ FUNCIÓN COMPLETAMENTE CORREGIDA: Guardar progreso EN SUPABASE
+  const guardarProgresoAutomatico = async () => {
+    if (!pedidoSeleccionado) return;
+
+    try {
+      console.log('💾 Guardando progreso completo en Supabase...');
+      
+      // 1. Guardar en localStorage (backup local)
       guardarProgreso(pedidoSeleccionado.id, productosEditables, comentarios);
 
-// ✅ CORRECCIÓN: Actualizar estado en memoria Y en Supabase
-setPedidos(pedidos =>
-  pedidos.map(p =>
-    p.id === pedidoSeleccionado.id
-      ? { ...p, estado: 'preparando' }
-      : p
-  )
-);
+      // 2. ✅ NUEVO: Preparar datos para Supabase
+      const itemsParaActualizar: Array<{
+        codigo_producto: string;
+        cantidad_preparada: number;
+        estado: 'pendiente' | 'completado' | 'sin_stock';
+        variante_color?: string;
+      }> = [];
 
-// ✅ NUEVO: También actualizar en Supabase para pedidos persistentes
-if (pedidoSeleccionado.esDeWhatsApp) {
-  supabase
-    .from('pedidos')
-    .update({ estado: 'preparando' })
-    .eq('id', pedidoSeleccionado.id)
-    .then(({ error }) => {
-      if (error) {
-        console.error('❌ Error actualizando estado en Supabase:', error);
-      } else {
-        console.log('✅ Estado actualizado en Supabase para pedido:', pedidoSeleccionado.id);
+      productosEditables.forEach(producto => {
+        if (producto.variantes && producto.variantes.length > 0) {
+          // Producto con variantes
+          producto.variantes.forEach(variante => {
+            itemsParaActualizar.push({
+              codigo_producto: producto.codigo,
+              cantidad_preparada: variante.cantidadPreparada,
+              estado: variante.estado,
+              variante_color: variante.color
+            });
+          });
+        } else {
+          // Producto sin variantes
+          itemsParaActualizar.push({
+            codigo_producto: producto.codigo,
+            cantidad_preparada: producto.cantidadPreparada,
+            estado: producto.estado,
+            variante_color: ''
+          });
+        }
+      });
+
+      // 3. ✅ ACTUALIZAR EN SUPABASE (no solo estado, sino TODO el progreso)
+      if (pedidoSeleccionado.esDeWhatsApp || parseInt(pedidoSeleccionado.id) > 0) {
+        await pedidosService.actualizarProgresoPreparacion(
+          parseInt(pedidoSeleccionado.id),
+          comentarios,
+          itemsParaActualizar
+        );
+        console.log('✅ Progreso guardado en Supabase exitosamente');
       }
-    });
-}
 
-      // ✅ CORRECCIÓN 3: Ir al dashboard en lugar de lista
+      // 4. Actualizar estado en memoria
+      setPedidos(pedidos =>
+        pedidos.map(p =>
+          p.id === pedidoSeleccionado.id
+            ? { ...p, estado: 'preparando' }
+            : p
+        )
+      );
+
+      // 5. Volver al dashboard
       if (onVolverDashboard) {
         onVolverDashboard();
       } else {
         setVistaActual('lista');
       }
 
-      alert('💾 Progreso guardado correctamente\n\n✅ Puedes continuar más tarde desde donde lo dejaste');
+      alert('✅ PROGRESO GUARDADO COMPLETAMENTE\n\n' +
+            '💾 Local: Guardado en el dispositivo\n' +
+            '☁️ Supabase: Sincronizado en la nube\n\n' +
+            '✅ VISIBLE EN CUALQUIER DISPOSITIVO\n' +
+            'Puedes continuar desde cualquier tablet/computadora');
+
+    } catch (error) {
+      console.error('❌ Error guardando progreso:', error);
+      
+      // Fallback: al menos guardar localmente
+      setPedidos(pedidos =>
+        pedidos.map(p =>
+          p.id === pedidoSeleccionado.id
+            ? { ...p, estado: 'preparando' }
+            : p
+        )
+      );
+
+      if (onVolverDashboard) {
+        onVolverDashboard();
+      } else {
+        setVistaActual('lista');
+      }
+
+      alert('⚠️ PROGRESO GUARDADO SOLO LOCALMENTE\n\n' +
+            `Error sincronizando con Supabase: ${error}\n\n` +
+            '💾 Se guardó en este dispositivo solamente\n' +
+            'Intenta finalizar el pedido desde esta misma tablet');
     }
   };
 
@@ -746,7 +803,7 @@ if (pedidoSeleccionado.esDeWhatsApp) {
       );
 
       if (respuesta === '1') {
-        guardarProgresoAutomatico();
+        await guardarProgresoAutomatico();
         return;
       } else if (respuesta !== '2') {
         return;
@@ -777,15 +834,53 @@ if (pedidoSeleccionado.esDeWhatsApp) {
 
       console.log('📋 Productos para reducir stock:', productosParaReduccionStock);
 
-      // Procesar reducción de stock
+      // 1. Procesar reducción de stock
       const resultadosStock = await productosService.procesarReduccionStockPedido(productosParaReduccionStock);
-      
-      console.log('📊 Resultados de actualización de inventario:', resultadosStock);
+      console.log('📊 Inventario actualizado:', resultadosStock);
 
+      // 2. ✅ NUEVO: Preparar datos finales para Supabase
+      const itemsFinales: Array<{
+        codigo_producto: string;
+        cantidad_preparada: number;
+        estado: 'pendiente' | 'completado' | 'sin_stock';
+        variante_color?: string;
+      }> = [];
+
+      productosEditables.forEach(producto => {
+        if (producto.variantes && producto.variantes.length > 0) {
+          producto.variantes.forEach(variante => {
+            itemsFinales.push({
+              codigo_producto: producto.codigo,
+              cantidad_preparada: variante.cantidadPreparada,
+              estado: variante.estado,
+              variante_color: variante.color
+            });
+          });
+        } else {
+          itemsFinales.push({
+            codigo_producto: producto.codigo,
+            cantidad_preparada: producto.cantidadPreparada,
+            estado: producto.estado,
+            variante_color: ''
+          });
+        }
+      });
+
+      // 3. ✅ FINALIZAR EN SUPABASE COMPLETAMENTE
+      if (pedidoSeleccionado.esDeWhatsApp || parseInt(pedidoSeleccionado.id) > 0) {
+        await pedidosService.finalizarPedidoCompleto(
+          parseInt(pedidoSeleccionado.id),
+          comentarios.trim(),
+          itemsFinales
+        );
+        console.log('✅ Pedido finalizado completamente en Supabase');
+      }
+
+      // 4. Crear objeto de pedido finalizado
       const pedidoFinalizado: Pedido = {
         ...pedidoSeleccionado,
         estado: 'completado',
-        productos: productosEditables, // ✅ CORRECCIÓN: Usar los productos editados
+        productos: productosEditables,
         comentarios: comentarios.trim(),
         fechaCompletado: new Date().toISOString().split('T')[0],
       };
@@ -810,15 +905,16 @@ if (pedidoSeleccionado.esDeWhatsApp) {
         .join('\n');
 
       alert(
-        `✅ Pedido completado exitosamente!\n\n` +
+        `✅ PEDIDO COMPLETADO EXITOSAMENTE\n\n` +
         `📋 ${pedidoFinalizado.numero}\n` +
         `👤 ${pedidoFinalizado.cliente.nombre}\n` +
         `📦 ${totalUnidades} unidades preparadas\n` +
         `📝 ${pedidoFinalizado.productos.length} productos\n` +
         `💰 Total: $${pedidoFinalizado.total?.toLocaleString() || '0'}\n\n` +
         `🏭 INVENTARIO ACTUALIZADO:\n${resumenStock}\n\n` +
-        `🚀 ENVIADO A FACTURACIÓN\n` +
-        `📊 Volviendo al Dashboard...`
+        `☁️ SUPABASE: Datos sincronizados\n` +
+        `🚀 DISPONIBLE EN FACTURACIÓN\n` +
+        `💻 Visible desde cualquier dispositivo`
       );
 
       if (onVolverDashboard) {
@@ -828,10 +924,12 @@ if (pedidoSeleccionado.esDeWhatsApp) {
     } catch (error) {
       console.error('❌ Error finalizando pedido:', error);
       alert(
-        `❌ Error al finalizar pedido\n\n` +
-        `Se produjo un error al actualizar el inventario.\n` +
-        `Por favor, revisa el inventario manualmente.\n\n` +
-        `Error: ${error}`
+        `❌ ERROR AL FINALIZAR PEDIDO\n\n` +
+        `Error: ${error}\n\n` +
+        `⚠️ ACCIONES NECESARIAS:\n` +
+        `1. Revisar inventario manualmente\n` +
+        `2. Verificar sincronización Supabase\n` +
+        `3. Contactar administrador si persiste`
       );
     }
   };

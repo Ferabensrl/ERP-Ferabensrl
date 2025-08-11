@@ -382,6 +382,117 @@ export const pedidosService = {
       console.error('Error en pedidosService.getItemsByPedidoId:', error)
       throw error
     }
+  },
+
+  // ✅ NUEVA FUNCIÓN: Actualizar progreso de preparación en Supabase
+  async actualizarProgresoPreparacion(
+    pedidoId: number,
+    comentarios: string,
+    items: Array<{
+      codigo_producto: string;
+      cantidad_preparada: number;
+      estado: 'pendiente' | 'completado' | 'sin_stock';
+      variante_color?: string;
+    }>
+  ): Promise<void> {
+    try {
+      console.log('🔄 Actualizando progreso en Supabase...', { pedidoId, itemsCount: items.length });
+
+      // 1. Actualizar comentarios del pedido
+      const { error: pedidoError } = await supabase
+        .from('pedidos')
+        .update({ 
+          comentarios: comentarios,
+          estado: 'preparando',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', pedidoId);
+
+      if (pedidoError) {
+        console.error('❌ Error actualizando pedido:', pedidoError);
+        throw pedidoError;
+      }
+
+      // 2. Actualizar cada item individualmente
+      for (const item of items) {
+        const { error: itemError } = await supabase
+          .from('pedido_items')
+          .update({
+            cantidad_preparada: item.cantidad_preparada,
+            estado: item.estado,
+            updated_at: new Date().toISOString()
+          })
+          .eq('pedido_id', pedidoId)
+          .eq('codigo_producto', item.codigo_producto)
+          .eq('variante_color', item.variante_color || '');
+
+        if (itemError) {
+          console.error(`❌ Error actualizando item ${item.codigo_producto}:`, itemError);
+          throw itemError;
+        }
+      }
+
+      console.log('✅ Progreso actualizado en Supabase exitosamente');
+    } catch (error) {
+      console.error('❌ Error en actualizarProgresoPreparacion:', error);
+      throw error;
+    }
+  },
+
+  // ✅ NUEVA FUNCIÓN: Finalizar pedido con actualización completa
+  async finalizarPedidoCompleto(
+    pedidoId: number,
+    comentariosFinal: string,
+    items: Array<{
+      codigo_producto: string;
+      cantidad_preparada: number;
+      estado: 'pendiente' | 'completado' | 'sin_stock';
+      variante_color?: string;
+    }>
+  ): Promise<void> {
+    try {
+      console.log('🎯 Finalizando pedido completo en Supabase...', { pedidoId });
+
+      // 1. Actualizar pedido a completado
+      const { error: pedidoError } = await supabase
+        .from('pedidos')
+        .update({ 
+          estado: 'completado',
+          comentarios: comentariosFinal,
+          fecha_completado: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', pedidoId);
+
+      if (pedidoError) {
+        console.error('❌ Error finalizando pedido:', pedidoError);
+        throw pedidoError;
+      }
+
+      // 2. Actualizar todos los items con cantidades finales
+      for (const item of items) {
+        const { error: itemError } = await supabase
+          .from('pedido_items')
+          .update({
+            cantidad_preparada: item.cantidad_preparada,
+            estado: item.estado,
+            updated_at: new Date().toISOString()
+          })
+          .eq('pedido_id', pedidoId)
+          .eq('codigo_producto', item.codigo_producto)
+          .eq('variante_color', item.variante_color || '');
+
+        if (itemError) {
+          console.error(`❌ Error finalizando item ${item.codigo_producto}:`, itemError);
+          throw itemError;
+        }
+      }
+
+      console.log('✅ Pedido finalizado completamente en Supabase');
+    } catch (error) {
+      console.error('❌ Error en finalizarPedidoCompleto:', error);
+      throw error;
+    }
   }
 }
 // PARTE 6/8 - UTILIDADES
