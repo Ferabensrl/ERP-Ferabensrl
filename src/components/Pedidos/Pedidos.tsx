@@ -1137,7 +1137,7 @@ const Pedidos: React.FC<PedidosProps> = ({
                     {pedido.productos.length} productos • {pedido.productos.reduce((sum, p) => sum + p.cantidadPedida, 0)} unidades
                   </p>
 
-                  {pedido.estado === 'preparando' && (
+                  {(pedido.estado === 'preparando' || (pedido.estado === 'pendiente' && progreso > 0)) && (
                     <>
                       <div className={styles.progressBarContainer}>
                         <div className={styles.progressBar} style={{ width: `${progreso}%` }} />
