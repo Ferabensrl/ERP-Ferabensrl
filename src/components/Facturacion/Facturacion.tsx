@@ -108,111 +108,212 @@ const Facturacion: React.FC<FacturacionProps> = ({
   const [pedidosProcesados, setPedidosProcesados] = useState<Set<string>>(new Set());
   const inputFileRef = useRef<HTMLInputElement>(null);
 
-  // ✅ EFECTO PRINCIPAL COMPLETAMENTE CORREGIDO para eliminar duplicados
-  useEffect(() => {
-    console.log('📊 Facturación recibió:', { pedidosCompletados, pedidosWhatsApp });
-    
-    // ✅ CORRECCIÓN 1: Evitar duplicados usando Set de IDs únicos
-    const idsYaProcesados = new Set<string>();
-    const pedidosUnicos: any[] = [];
+  // ✅ NUEVA FUNCIÓN: Cargar pedidos completados directamente desde Supabase
+  const cargarPedidosCompletadosDeSupabase = async () => {
+    try {
+      console.log('📊 Facturación: Cargando pedidos completados desde Supabase...');
 
-    // Combinar ambos arrays y filtrar duplicados
-    [...pedidosCompletados, ...pedidosWhatsApp].forEach(pedido => {
-      if (pedido && pedido.id && !idsYaProcesados.has(pedido.id)) {
-        idsYaProcesados.add(pedido.id);
-        pedidosUnicos.push(pedido);
+      // Obtener pedidos completados (listos para facturar)
+      const { data: pedidosData, error: pedidosError } = await supabase
+        .from('pedidos')
+        .select('*')
+        .eq('estado', 'completado')
+        .order('fecha_completado', { ascending: false });
+
+      if (pedidosError) {
+        console.error('❌ Error obteniendo pedidos completados:', pedidosError);
+        return [];
       }
-    });
 
-    console.log('✅ Pedidos únicos después de filtrar:', pedidosUnicos.length);
+      console.log('✅ Pedidos completados obtenidos de Supabase:', pedidosData?.length || 0);
 
-    // ✅ CORRECCIÓN 2: Convertir solo pedidos completados
-    const pedidosParaFacturar: PedidoParaFacturar[] = pedidosUnicos
-      .filter(pedido => pedido && pedido.estado === 'completado')
-      .map(pedido => {
-        const esDeWhatsApp = Boolean(pedido.esDeWhatsApp || pedido.origen === 'whatsapp');
-        
-        return {
-          id: pedido.id,
-          numero: pedido.numero || `PED-${pedido.id}`,
+      // Para cada pedido, obtener sus items y convertir al formato de facturación
+      const pedidosParaFacturar: any[] = [];
+      
+      for (const pedido of pedidosData || []) {
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('pedido_items')
+          .select('*')
+          .eq('pedido_id', pedido.id)
+          .order('created_at');
+
+        if (itemsError) {
+          console.error(`❌ Error obteniendo items del pedido ${pedido.id}:`, itemsError);
+          continue;
+        }
+
+        // Obtener datos de inventario para nombres y códigos de barras
+        const codigosUnicos = [...new Set(itemsData?.map(item => item.codigo_producto) || [])];
+        const { data: datosInventario } = await supabase
+          .from('inventario')
+          .select('codigo_producto, descripcion, codigo_barras')
+          .in('codigo_producto', codigosUnicos);
+
+        const inventarioMap = new Map();
+        datosInventario?.forEach(item => {
+          inventarioMap.set(item.codigo_producto, item);
+        });
+
+        // Convertir pedido al formato esperado por facturación
+        const pedidoConvertido = {
+          ...pedido,
           cliente: {
-            id: pedido.cliente?.id || `cliente-${pedido.id}`,
-            nombre: pedido.cliente?.nombre || 'Cliente no especificado',
-            telefono: pedido.cliente?.telefono,
-            direccion: pedido.cliente?.direccion
+            id: `cliente-${pedido.id}`,
+            nombre: pedido.cliente_nombre,
+            telefono: pedido.cliente_telefono || '',
+            direccion: pedido.cliente_direccion || ''
           },
-          fecha: pedido.fecha || new Date().toISOString().split('T')[0],
-          estado: 'completado' as const,
-          productos: pedido.productos?.map((producto: any) => {
-            // ✅ CORRECCIÓN 4: Calcular cantidad TOTAL sumando variantes PREPARADAS
-            const cantidadTotal = producto.variantes && producto.variantes.length > 0
-              ? producto.variantes.reduce((sum: number, v: any) => sum + (v.cantidadPreparada || 0), 0)
-              : producto.cantidadPreparada || producto.cantidadPedida || 0;
-
+          fecha: new Date(pedido.fecha_pedido).toISOString().split('T')[0],
+          productos: itemsData?.map((item: any) => {
+            const datosInv = inventarioMap.get(item.codigo_producto);
             return {
-              id: producto.id || `prod-${Math.random().toString(36).substr(2, 9)}`,
-              codigo: producto.codigo || 'SIN_CODIGO',
-              nombre: producto.nombre || 'Producto sin nombre',
-              cantidad: cantidadTotal,
-              precioUnitario: producto.precio || 0,
-              descuentoPorcentaje: 0,
-              codigoBarras: producto.codigoBarras || producto.codigo || `cb-${producto.id}`,
-              comentarioProducto: producto.comentarioProducto,
-              descripcion: producto.descripcion || producto.nombre,
-              variantes: producto.variantes ? 
-                producto.variantes.map((v: any) => ({
-                  id: v.id || `var_${Math.random().toString(36).substr(2, 9)}`,
-                  color: v.color || 'Sin color',
-                  cantidadPedida: v.cantidadPedida || 0,
-                  cantidadPreparada: v.cantidadPreparada || 0,
-                  estado: v.estado || 'pendiente'
-                }))
-              : undefined,
-              productoBase: producto.productoBase,
-              cantidadPreparada: cantidadTotal, // ✅ CANTIDAD ORIGINAL PREPARADA EN DEPÓSITO
-              cantidadOriginalPreparada: cantidadTotal // ✅ BACKUP para cálculo de diferencias
+              id: item.id?.toString() || `item-${Math.random()}`,
+              codigo: item.codigo_producto,
+              nombre: datosInv?.descripcion || `Producto ${item.codigo_producto}`,
+              cantidadPedida: item.cantidad_pedida,
+              cantidadPreparada: item.cantidad_preparada,
+              estado: item.estado,
+              precio: item.precio_unitario,
+              codigoBarras: datosInv?.codigo_barras || '',
+              variante_color: item.variante_color,
+              comentarios: item.comentarios
             };
-          }),
-          // ✅ CORRECCIÓN 3: Calcular total real basado en cantidades preparadas
-          total: (() => {
-            return pedido.productos?.reduce((sum: number, prod: any) => {
-              const cantidadReal = prod.variantes && prod.variantes.length > 0
-                ? prod.variantes.reduce((vSum: number, v: any) => vSum + (v.cantidadPreparada || 0), 0)
-                : prod.cantidadPreparada || prod.cantidadPedida || 0;
-              return sum + (cantidadReal * (prod.precio || 0));
-            }, 0) || 0;
-          })(),
-          seleccionado: false,
+          }) || [],
           comentarios: pedido.comentarios || '',
-          comentarioFinal: pedido.comentarioFinal,
-          fechaCompletado: pedido.fechaCompletado,
-          esDeWhatsApp: esDeWhatsApp,
-          yaFacturado: false
+          esDeWhatsApp: pedido.origen === 'whatsapp'
         };
+
+        pedidosParaFacturar.push(pedidoConvertido);
+      }
+
+      return pedidosParaFacturar;
+
+    } catch (error) {
+      console.error('❌ Error cargando pedidos completados de Supabase:', error);
+      return [];
+    }
+  };
+
+  // ✅ EFECTO PRINCIPAL MODIFICADO: Consultar Supabase directamente
+  useEffect(() => {
+    const cargarTodosLosPedidos = async () => {
+      console.log('📊 Facturación: Iniciando carga de pedidos...');
+
+      // Cargar pedidos completados desde Supabase
+      const pedidosDeSupabase = await cargarPedidosCompletadosDeSupabase();
+      console.log('📦 Pedidos completados de Supabase:', pedidosDeSupabase.length);
+
+      // También procesar pedidos recibidos por props (para compatibilidad)
+      const idsYaProcesados = new Set<string>();
+      const pedidosUnicos: any[] = [];
+
+      // Primero agregar pedidos de Supabase
+      pedidosDeSupabase.forEach(pedido => {
+        if (pedido && pedido.id && !idsYaProcesados.has(pedido.id)) {
+          idsYaProcesados.add(pedido.id);
+          pedidosUnicos.push(pedido);
+        }
       });
 
-    // ✅ CORRECCIÓN 6: Filtrar pedidos ya facturados
-    const pedidosNoFacturados = pedidosParaFacturar.filter(p => !pedidosProcesados.has(p.id));
-    
-    setPedidosListos(pedidosNoFacturados);
+      // Luego agregar pedidos por props (sin duplicar)
+      [...pedidosCompletados, ...pedidosWhatsApp].forEach(pedido => {
+        if (pedido && pedido.id && !idsYaProcesados.has(pedido.id) && pedido.estado === 'completado') {
+          idsYaProcesados.add(pedido.id);
+          pedidosUnicos.push(pedido);
+        }
+      });
 
-    // Actualizar estadísticas
-    const stats = {
-      totalPedidos: pedidosNoFacturados.length,
-      totalFacturacion: pedidosNoFacturados.reduce((sum, p) => sum + p.total, 0),
-      pedidosWhatsApp: pedidosNoFacturados.filter(p => p.esDeWhatsApp).length,
-      pedidosEstandar: pedidosNoFacturados.filter(p => !p.esDeWhatsApp).length
+      console.log('✅ Pedidos únicos después de filtrar:', pedidosUnicos.length);
+
+      // ✅ CORRECCIÓN 2: Convertir solo pedidos completados
+      const pedidosParaFacturar: PedidoParaFacturar[] = pedidosUnicos
+        .filter(pedido => pedido && pedido.estado === 'completado')
+        .map(pedido => {
+          const esDeWhatsApp = Boolean(pedido.esDeWhatsApp || pedido.origen === 'whatsapp');
+          
+          return {
+            id: pedido.id,
+            numero: pedido.numero || `PED-${pedido.id}`,
+            cliente: pedido.cliente || {
+              id: pedido.cliente?.id || `cliente-${pedido.id}`,
+              nombre: pedido.cliente?.nombre || pedido.cliente_nombre || 'Cliente no especificado',
+              telefono: pedido.cliente?.telefono || pedido.cliente_telefono,
+              direccion: pedido.cliente?.direccion || pedido.cliente_direccion
+            },
+            fecha: pedido.fecha || new Date().toISOString().split('T')[0],
+            estado: 'completado' as const,
+            productos: pedido.productos?.map((producto: any) => {
+              // ✅ CORRECCIÓN 4: Calcular cantidad TOTAL sumando variantes PREPARADAS
+              const cantidadTotal = producto.variantes && producto.variantes.length > 0
+                ? producto.variantes.reduce((sum: number, v: any) => sum + (v.cantidadPreparada || 0), 0)
+                : producto.cantidadPreparada || producto.cantidadPedida || 0;
+
+              return {
+                id: producto.id || `prod-${Math.random().toString(36).substr(2, 9)}`,
+                codigo: producto.codigo || 'SIN_CODIGO',
+                nombre: producto.nombre || 'Producto sin nombre',
+                cantidad: cantidadTotal,
+                precioUnitario: producto.precio || producto.precio_unitario || 0,
+                descuentoPorcentaje: 0,
+                codigoBarras: producto.codigoBarras || producto.codigo || `cb-${producto.id}`,
+                comentarioProducto: producto.comentarioProducto,
+                descripcion: producto.descripcion || producto.nombre,
+                variantes: producto.variantes ? 
+                  producto.variantes.map((v: any) => ({
+                    id: v.id || `var_${Math.random().toString(36).substr(2, 9)}`,
+                    color: v.color || 'Sin color',
+                    cantidadPedida: v.cantidadPedida || 0,
+                    cantidadPreparada: v.cantidadPreparada || 0,
+                    estado: v.estado || 'pendiente'
+                  }))
+                : undefined,
+                productoBase: producto.productoBase,
+                cantidadPreparada: cantidadTotal, // ✅ CANTIDAD ORIGINAL PREPARADA EN DEPÓSITO
+                cantidadOriginalPreparada: cantidadTotal // ✅ BACKUP para cálculo de diferencias
+              };
+            }),
+            // ✅ CORRECCIÓN 3: Calcular total real basado en cantidades preparadas
+            total: (() => {
+              return pedido.productos?.reduce((sum: number, prod: any) => {
+                const cantidadReal = prod.variantes && prod.variantes.length > 0
+                  ? prod.variantes.reduce((vSum: number, v: any) => vSum + (v.cantidadPreparada || 0), 0)
+                  : prod.cantidadPreparada || prod.cantidadPedida || 0;
+                return sum + (cantidadReal * (prod.precio || prod.precio_unitario || 0));
+              }, 0) || pedido.total || 0;
+            })(),
+            seleccionado: false,
+            comentarios: pedido.comentarios || '',
+            comentarioFinal: pedido.comentarioFinal,
+            fechaCompletado: pedido.fechaCompletado || pedido.fecha_completado,
+            esDeWhatsApp: esDeWhatsApp,
+            yaFacturado: false
+          };
+        });
+
+      // ✅ CORRECCIÓN 6: Filtrar pedidos ya facturados
+      const pedidosNoFacturados = pedidosParaFacturar.filter(p => !pedidosProcesados.has(p.id));
+      
+      setPedidosListos(pedidosNoFacturados);
+
+      // Actualizar estadísticas
+      const stats = {
+        totalPedidos: pedidosNoFacturados.length,
+        totalFacturacion: pedidosNoFacturados.reduce((sum, p) => sum + p.total, 0),
+        pedidosWhatsApp: pedidosNoFacturados.filter(p => p.esDeWhatsApp).length,
+        pedidosEstandar: pedidosNoFacturados.filter(p => !p.esDeWhatsApp).length
+      };
+      setEstadisticas(stats);
+
+      console.log('✅ Pedidos listos para facturación:', pedidosNoFacturados.length);
+
+      // Cargar historial de facturación desde localStorage
+      const historialGuardado = localStorage.getItem('historialFacturacion');
+      if (historialGuardado) {
+        setHistorialFacturacion(JSON.parse(historialGuardado));
+      }
     };
-    setEstadisticas(stats);
 
-    console.log('✅ Pedidos listos para facturación:', pedidosNoFacturados.length);
-
-    // Cargar historial de facturación desde localStorage
-    const historialGuardado = localStorage.getItem('historialFacturacion');
-    if (historialGuardado) {
-      setHistorialFacturacion(JSON.parse(historialGuardado));
-    }
-
+    cargarTodosLosPedidos();
   }, [pedidosCompletados, pedidosWhatsApp, pedidosProcesados]);
   // ✅ FUNCIONES DE MANEJO MEJORADAS
   const handleImportarExcel = (event: React.ChangeEvent<HTMLInputElement>) => {
