@@ -73,6 +73,21 @@ const Inventario: React.FC = () => {
   const [importProgress, setImportProgress] = useState(0);
   const [importMessage, setImportMessage] = useState('');
   
+  // ✅ NUEVOS ESTADOS PARA EXPORTACIÓN EXCEL
+  const [mostrarModalExport, setMostrarModalExport] = useState(false);
+  const [opcionesExport, setOpcionesExport] = useState({
+    incluirCodigo: true,
+    incluirDescripcion: true,
+    incluirCategoria: true,
+    incluirCodigoBarras: true,
+    incluirStock: true,
+    incluirPrecioVenta: false,
+    incluirPrecioCosto: false,
+    incluirEstado: false,
+    filtroStock: 'todos', // 'todos', 'con_stock', 'sin_stock'
+    soloActivos: true
+  });
+  
   // ✅ NUEVOS ESTADOS PARA EDICIÓN INDIVIDUAL
   const [productoEditando, setProductoEditando] = useState<number | null>(null);
   const [datosEdicion, setDatosEdicion] = useState<Partial<ProductoInventario>>({});
@@ -295,6 +310,112 @@ const Inventario: React.FC = () => {
       ...prev,
       [campo]: valor
     }));
+  };
+
+  // ✅ NUEVA FUNCIÓN PARA EXPORTAR A EXCEL
+  const exportarProductosExcel = () => {
+    try {
+      // Aplicar filtros según opciones de exportación
+      let productosParaExportar = productosFiltrados;
+      
+      // Filtro por estado activo/inactivo
+      if (opcionesExport.soloActivos) {
+        productosParaExportar = productosParaExportar.filter(p => p.activo !== false);
+      }
+      
+      // Filtro por stock
+      switch (opcionesExport.filtroStock) {
+        case 'con_stock':
+          productosParaExportar = productosParaExportar.filter(p => p.stock > 0);
+          break;
+        case 'sin_stock':
+          productosParaExportar = productosParaExportar.filter(p => p.stock === 0);
+          break;
+        // 'todos' no filtra nada
+      }
+      
+      if (productosParaExportar.length === 0) {
+        alert('❌ No hay productos que cumplan con los criterios de exportación');
+        return;
+      }
+      
+      // Crear headers dinámicos según opciones seleccionadas
+      const headers: string[] = [];
+      if (opcionesExport.incluirCodigo) headers.push('Código Producto');
+      if (opcionesExport.incluirDescripcion) headers.push('Descripción');
+      if (opcionesExport.incluirCategoria) headers.push('Categoría');
+      if (opcionesExport.incluirCodigoBarras) headers.push('Código de Barras');
+      if (opcionesExport.incluirStock) headers.push('Stock');
+      if (opcionesExport.incluirPrecioVenta) headers.push('Precio Venta');
+      if (opcionesExport.incluirPrecioCosto) headers.push('Precio Costo');
+      if (opcionesExport.incluirEstado) headers.push('Estado');
+      
+      // Crear filas de datos
+      const datosExcel = productosParaExportar.map(producto => {
+        const fila: any[] = [];
+        if (opcionesExport.incluirCodigo) fila.push(producto.codigo_producto);
+        if (opcionesExport.incluirDescripcion) fila.push(producto.descripcion);
+        if (opcionesExport.incluirCategoria) fila.push(producto.categoria);
+        if (opcionesExport.incluirCodigoBarras) fila.push(producto.codigo_barras || '');
+        if (opcionesExport.incluirStock) fila.push(producto.stock);
+        if (opcionesExport.incluirPrecioVenta) fila.push(producto.precio_venta);
+        if (opcionesExport.incluirPrecioCosto) fila.push(producto.precio_costo || 0);
+        if (opcionesExport.incluirEstado) fila.push(producto.activo === false ? 'Inactivo' : 'Activo');
+        return fila;
+      });
+      
+      // Crear workbook y worksheet
+      const wb = XLSX.utils.book_new();
+      const wsData = [headers, ...datosExcel];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      
+      // Ajustar ancho de columnas
+      const colWidths = headers.map(header => {
+        if (header === 'Descripción') return { wch: 40 };
+        if (header === 'Código de Barras') return { wch: 20 };
+        if (header === 'Categoría') return { wch: 25 };
+        return { wch: 15 };
+      });
+      ws['!cols'] = colWidths;
+      
+      // Agregar worksheet al workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Productos_Feraben');
+      
+      // Generar nombre de archivo con timestamp y filtros aplicados
+      const timestamp = new Date().toISOString().slice(0, 10);
+      let nombreFiltros = '';
+      if (selectedCategory !== 'Todas') {
+        nombreFiltros += `_${selectedCategory.replace(/\s+/g, '_')}`;
+      }
+      if (opcionesExport.filtroStock !== 'todos') {
+        nombreFiltros += `_${opcionesExport.filtroStock}`;
+      }
+      if (searchTerm) {
+        nombreFiltros += '_filtrado';
+      }
+      
+      const nombreArchivo = `Productos_Feraben_${timestamp}${nombreFiltros}.xlsx`;
+      
+      // Descargar archivo
+      XLSX.writeFile(wb, nombreArchivo);
+      
+      // Mostrar resumen de exportación
+      alert(`✅ Excel generado exitosamente!
+      
+📄 Archivo: ${nombreArchivo}
+📊 ${productosParaExportar.length} productos exportados
+📋 ${headers.length} columnas incluidas
+${selectedCategory !== 'Todas' ? `🏷️ Categoría: ${selectedCategory}` : ''}
+${opcionesExport.filtroStock !== 'todos' ? `📦 Stock: ${opcionesExport.filtroStock.replace('_', ' ')}` : ''}
+      
+El archivo se ha descargado y está listo para enviar a tu cliente.`);
+      
+      setMostrarModalExport(false);
+      
+    } catch (error) {
+      console.error('Error exportando Excel:', error);
+      alert(`❌ Error generando Excel: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+    }
   };
   // IMPORTADOR DE EXCEL
   const importarProductosExcel = async (file: File) => {
@@ -752,6 +873,29 @@ const Inventario: React.FC = () => {
             >
               <Upload size={16} />
               {isMobile ? 'Importar Excel' : 'Importar'}
+            </button>
+
+            {/* ✅ NUEVO BOTÓN EXPORTAR EXCEL */}
+            <button
+              onClick={() => setMostrarModalExport(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                padding: isMobile ? '14px' : '8px 16px',
+                backgroundColor: '#059669',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                minHeight: '44px'
+              }}
+            >
+              <Download size={16} />
+              {isMobile ? 'Exportar Excel' : 'Exportar'}
             </button>
 
             <button
@@ -2009,6 +2153,253 @@ const Inventario: React.FC = () => {
                </button>
              </div>
            </form>
+         </div>
+       </div>
+     )}
+
+     {/* ✅ MODAL EXPORTAR EXCEL */}
+     {mostrarModalExport && (
+       <div style={{
+         position: 'fixed',
+         top: 0,
+         left: 0,
+         right: 0,
+         bottom: 0,
+         backgroundColor: 'rgba(0, 0, 0, 0.5)',
+         display: 'flex',
+         alignItems: 'center',
+         justifyContent: 'center',
+         zIndex: 1000,
+         padding: '20px'
+       }}>
+         <div style={{
+           backgroundColor: 'white',
+           borderRadius: '12px',
+           padding: '24px',
+           maxWidth: '600px',
+           width: '100%',
+           maxHeight: '80vh',
+           overflow: 'auto'
+         }}>
+           <div style={{
+             display: 'flex',
+             alignItems: 'center',
+             justifyContent: 'space-between',
+             marginBottom: '20px'
+           }}>
+             <h3 style={{
+               margin: 0,
+               fontSize: '20px',
+               fontWeight: '600',
+               color: '#1f2937'
+             }}>
+               📊 Exportar Productos a Excel
+             </h3>
+             <button
+               onClick={() => setMostrarModalExport(false)}
+               style={{
+                 background: 'none',
+                 border: 'none',
+                 fontSize: '24px',
+                 cursor: 'pointer',
+                 color: '#6b7280',
+                 minHeight: '44px',
+                 minWidth: '44px'
+               }}
+             >
+               ×
+             </button>
+           </div>
+
+           {/* INFORMACIÓN DE FILTROS ACTUALES */}
+           <div style={{
+             padding: '16px',
+             backgroundColor: '#f0f9ff',
+             borderRadius: '8px',
+             border: '1px solid #0ea5e9',
+             marginBottom: '20px'
+           }}>
+             <h4 style={{ margin: '0 0 8px 0', color: '#0c4a6e', fontSize: '14px' }}>
+               🎯 Filtros actuales aplicados:
+             </h4>
+             <div style={{ fontSize: '13px', color: '#075985' }}>
+               <div>📊 <strong>{productosFiltrados.length}</strong> productos serán exportados</div>
+               {selectedCategory !== 'Todas' && <div>🏷️ Categoría: <strong>{selectedCategory}</strong></div>}
+               {searchTerm && <div>🔍 Búsqueda: <strong>"{searchTerm}"</strong></div>}
+               {filtroEstado !== 'Todos' && <div>📦 Estado: <strong>{filtroEstado}</strong></div>}
+             </div>
+           </div>
+
+           {/* CONFIGURACIÓN DE COLUMNAS */}
+           <div style={{ marginBottom: '20px' }}>
+             <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#374151' }}>
+               📋 Columnas a incluir:
+             </h4>
+             <div style={{
+               display: 'grid',
+               gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+               gap: '8px'
+             }}>
+               {[
+                 { key: 'incluirCodigo', label: '📦 Código Producto' },
+                 { key: 'incluirDescripcion', label: '📝 Descripción' },
+                 { key: 'incluirCategoria', label: '🏷️ Categoría' },
+                 { key: 'incluirCodigoBarras', label: '🔗 Código de Barras' },
+                 { key: 'incluirStock', label: '📊 Stock' },
+                 { key: 'incluirPrecioVenta', label: '💰 Precio Venta' },
+                 { key: 'incluirPrecioCosto', label: '💲 Precio Costo' },
+                 { key: 'incluirEstado', label: '✅ Estado' }
+               ].map(({ key, label }) => (
+                 <label
+                   key={key}
+                   style={{
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: '8px',
+                     padding: '8px',
+                     cursor: 'pointer',
+                     fontSize: '14px'
+                   }}
+                 >
+                   <input
+                     type="checkbox"
+                     checked={opcionesExport[key as keyof typeof opcionesExport] as boolean}
+                     onChange={(e) => setOpcionesExport(prev => ({
+                       ...prev,
+                       [key]: e.target.checked
+                     }))}
+                     style={{ width: '16px', height: '16px' }}
+                   />
+                   {label}
+                 </label>
+               ))}
+             </div>
+           </div>
+
+           {/* FILTROS ADICIONALES */}
+           <div style={{ marginBottom: '20px' }}>
+             <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#374151' }}>
+               🎛️ Filtros adicionales:
+             </h4>
+             
+             <div style={{
+               display: 'grid',
+               gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+               gap: '16px'
+             }}>
+               {/* Filtro por Stock */}
+               <div>
+                 <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                   📦 Filtro por Stock:
+                 </label>
+                 <select
+                   value={opcionesExport.filtroStock}
+                   onChange={(e) => setOpcionesExport(prev => ({
+                     ...prev,
+                     filtroStock: e.target.value
+                   }))}
+                   style={{
+                     width: '100%',
+                     padding: '8px 12px',
+                     border: '1px solid #d1d5db',
+                     borderRadius: '6px',
+                     fontSize: '14px',
+                     backgroundColor: 'white'
+                   }}
+                 >
+                   <option value="todos">Todos los productos</option>
+                   <option value="con_stock">Solo con stock</option>
+                   <option value="sin_stock">Solo sin stock</option>
+                 </select>
+               </div>
+
+               {/* Solo productos activos */}
+               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '20px' }}>
+                 <input
+                   type="checkbox"
+                   id="soloActivos"
+                   checked={opcionesExport.soloActivos}
+                   onChange={(e) => setOpcionesExport(prev => ({
+                     ...prev,
+                     soloActivos: e.target.checked
+                   }))}
+                   style={{ width: '16px', height: '16px' }}
+                 />
+                 <label htmlFor="soloActivos" style={{ fontSize: '14px', color: '#374151', cursor: 'pointer' }}>
+                   ✅ Solo productos activos
+                 </label>
+               </div>
+             </div>
+           </div>
+
+           {/* PREVIEW DE EXPORTACIÓN */}
+           <div style={{
+             padding: '12px',
+             backgroundColor: '#f9fafb',
+             borderRadius: '8px',
+             marginBottom: '20px',
+             border: '1px solid #e5e7eb'
+           }}>
+             <div style={{ fontSize: '14px', color: '#374151' }}>
+               📊 <strong>Preview:</strong> Se exportarán aproximadamente {
+                 (() => {
+                   let count = productosFiltrados.length;
+                   if (opcionesExport.soloActivos) {
+                     count = productosFiltrados.filter(p => p.activo !== false).length;
+                   }
+                   if (opcionesExport.filtroStock === 'con_stock') {
+                     count = productosFiltrados.filter(p => p.stock > 0).length;
+                   } else if (opcionesExport.filtroStock === 'sin_stock') {
+                     count = productosFiltrados.filter(p => p.stock === 0).length;
+                   }
+                   return count;
+                 })()
+               } productos
+             </div>
+           </div>
+
+           {/* BOTONES DE ACCIÓN */}
+           <div style={{
+             display: 'flex',
+             gap: '12px',
+             justifyContent: 'flex-end'
+           }}>
+             <button
+               onClick={() => setMostrarModalExport(false)}
+               style={{
+                 padding: '12px 20px',
+                 backgroundColor: '#f3f4f6',
+                 color: '#374151',
+                 border: 'none',
+                 borderRadius: '8px',
+                 fontSize: '14px',
+                 cursor: 'pointer',
+                 minHeight: '44px'
+               }}
+             >
+               Cancelar
+             </button>
+             <button
+               onClick={exportarProductosExcel}
+               style={{
+                 padding: '12px 20px',
+                 backgroundColor: '#059669',
+                 color: 'white',
+                 border: 'none',
+                 borderRadius: '8px',
+                 fontSize: '14px',
+                 cursor: 'pointer',
+                 fontWeight: '500',
+                 minHeight: '44px',
+                 display: 'flex',
+                 alignItems: 'center',
+                 gap: '8px'
+               }}
+             >
+               <Download size={16} />
+               Generar Excel
+             </button>
+           </div>
          </div>
        </div>
      )}
