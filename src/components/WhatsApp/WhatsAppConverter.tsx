@@ -290,12 +290,16 @@ const WhatsAppConverter: React.FC = () => {
     for (let i = 0; i < lineas.length; i++) {
       const linea = lineas[i].trim();
       
-      // Buscar patrón del PDF: caracteres especiales + CÓDIGO – DESCRIPCIÓN
-      const matchProducto = linea.match(/[⦿=Ý9\s]*([A-Z0-9-]+)\s*[–-]\s*(.+)/);
+      // Buscar patrón del PDF: ignorar caracteres basura + capturar CÓDIGO real
+      // ✅ CORREGIDO: Ø=Ý9 son caracteres basura, código real es "2 9 1 7 2" → "29172"
+      const matchProducto = linea.match(/[⦿Ø=Ý9\s]*([A-Z0-9\s-]+?)\s*[–-]\s*(.+)/);
       
       if (matchProducto) {
-        const codigo = matchProducto[1].trim();
+        const codigoRaw = matchProducto[1].trim();
+        const codigo = codigoRaw.replace(/\s+/g, ''); // Limpiar espacios: "2 9 1 7 2" → "29172"
         const descripcion = matchProducto[2].trim();
+        
+        console.log(`🔍 PDF Producto: "${codigoRaw}" → "${codigo}" - ${descripcion}`);
 
         // Buscar variantes en las líneas siguientes
         const variantes: VarianteProducto[] = [];
