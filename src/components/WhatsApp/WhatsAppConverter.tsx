@@ -269,9 +269,9 @@ const WhatsAppConverter: React.FC = () => {
   const procesarPDF = async (contenidoPDF: string): Promise<{ cliente: ClienteDetectado; productos: ProductoDetectado[] }> => {
     console.log('📄 Procesando PDF de pedido...');
     
-    // Extraer cliente del PDF
-    let clienteMatch = contenidoPDF.match(/Cliente:\s*(.+)/i);
-    const clienteNombre = clienteMatch ? clienteMatch[1].trim() : 'Cliente PDF';
+    // Extraer cliente del PDF (ignorar caracteres basura como Ø=Üd)
+    let clienteMatch = contenidoPDF.match(/[Ø=Üd\s]*C\s*l\s*i\s*e\s*n\s*t\s*e\s*:\s*(.+)/i);
+    let clienteNombre = clienteMatch ? clienteMatch[1].trim().replace(/\s+/g, '') : 'Cliente PDF'; // Quitar espacios: "l o g i f i l s a" → "logifilsa"
 
     const cliente: ClienteDetectado = {
       nombre: clienteNombre,
@@ -290,9 +290,9 @@ const WhatsAppConverter: React.FC = () => {
     for (let i = 0; i < lineas.length; i++) {
       const linea = lineas[i].trim();
       
-      // Buscar patrón del PDF: ignorar caracteres basura + capturar CÓDIGO real
-      // ✅ CORREGIDO: Ø=Ý9 son caracteres basura, código real es "2 9 1 7 2" → "29172"
-      const matchProducto = linea.match(/[⦿Ø=Ý9\s]*([A-Z0-9\s-]+?)\s*[–-]\s*(.+)/);
+      // Buscar patrón del PDF: ignorar caracteres basura + capturar CÓDIGO completo
+      // ✅ CORREGIDO: Capturar "E A 2 2 0 0 3 - 2" → "EA22003-2" (todo hasta el guión largo –)
+      const matchProducto = linea.match(/[⦿Ø=Ý9\s]*([^–]+?)\s*–\s*(.+)/);
       
       if (matchProducto) {
         const codigoRaw = matchProducto[1].trim();
