@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Package, ShoppingCart, MessageSquare, Scan, BarChart3, FileText } from 'lucide-react'
+import { Package, ShoppingCart, MessageSquare, Scan, BarChart3, FileText, Target } from 'lucide-react'
 
 // Importes de componentes
 import Dashboard from './components/Dashboard'
@@ -9,6 +9,7 @@ import Inventario from './components/Inventario/Inventario'
 import ScannerMultiEngine from './components/Scanner/ScannerMultiEngine'
 import Facturacion from './components/Facturacion/Facturacion'
 import DashboardSupabase from './components/Dashboard/DashboardSupabase'
+import ControlEjecutivo from './components/ControlEjecutivo/ControlEjecutivo'
 
 // TIPOS ACTUALIZADOS para integración completa
 interface VarianteProducto {
@@ -114,6 +115,8 @@ function App() {
             pedidosWhatsApp={pedidosWhatsApp}
           />
         )
+      case 'control-ejecutivo':
+        return <ControlEjecutivo />
       default:
         return <Dashboard />
     }
@@ -167,6 +170,13 @@ function App() {
             text="Dashboard" 
             active={activeModule === 'dashboard'} 
             onClick={() => setActiveModule('dashboard')} 
+          />
+
+          <NavButton 
+            icon={<Target size={20} />} 
+            text="Control Ejecutivo" 
+            active={activeModule === 'control-ejecutivo'} 
+            onClick={() => setActiveModule('control-ejecutivo')} 
           />
           
           <NavButton 
