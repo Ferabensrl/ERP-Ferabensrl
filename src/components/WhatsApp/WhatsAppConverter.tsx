@@ -13,7 +13,8 @@ import {
   ShoppingCart,
   Edit3,
   Plus,
-  Minus
+  Minus,
+  FileText
 } from 'lucide-react';
 import { pedidosService, productosService, type DbPedido, type DbPedidoItem } from '../../lib/supabaseClient';
 
