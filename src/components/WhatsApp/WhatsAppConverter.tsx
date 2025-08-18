@@ -64,6 +64,10 @@ const WhatsAppConverter: React.FC = () => {
   // ✅ NUEVOS ESTADOS para PDF y detección mejorada
   const [mostrarImportPDF, setMostrarImportPDF] = useState(false);
   const [archivoPDF, setArchivoPDF] = useState<File | null>(null);
+  
+  // ✅ NUEVOS ESTADOS para "Pegar Texto PDF"
+  const [mostrarPegarTextoPDF, setMostrarPegarTextoPDF] = useState(false);
+  const [textoPDF, setTextoPDF] = useState('');
 
   // ✅ NUEVA FUNCIÓN: Detectar mensaje de WhatsApp Web (sin emojis)
   const detectarWhatsAppWeb = (mensaje: string): boolean => {
@@ -587,6 +591,43 @@ PROD001 – Producto de ejemplo
     }
   };
 
+  // ✅ NUEVA FUNCIÓN: Procesar texto pegado de PDF
+  const procesarTextoPDF = async () => {
+    if (!textoPDF.trim()) {
+      alert('❌ Por favor pega el contenido del PDF en el área de texto');
+      return;
+    }
+
+    setProcesando(true);
+    
+    try {
+      // Simular delay de procesamiento
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      console.log('📄 Procesando texto pegado de PDF...');
+      console.log('📝 Contenido:', textoPDF.substring(0, 200) + '...');
+      
+      const resultado = await procesarPDF(textoPDF);
+      
+      if (resultado.productos.length > 0) {
+        setClienteDetectado(resultado.cliente);
+        setProductosDetectados(resultado.productos);
+        
+        alert(`✅ Texto PDF procesado exitosamente!\n\n👤 Cliente: ${resultado.cliente.nombre}\n📦 Productos detectados: ${resultado.productos.length}`);
+      } else {
+        alert('❌ No se pudieron detectar productos en el texto. Verifica que el formato sea correcto.\n\nFormato esperado:\nCliente: [nombre]\nDetalle del pedido:\nCÓDIGO – Descripción\n- Color: cantidad');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error procesando texto PDF:', error);
+      alert('❌ Error procesando el texto del PDF. Intenta con otro formato.');
+    } finally {
+      setProcesando(false);
+      setMostrarPegarTextoPDF(false);
+      setTextoPDF('');
+    }
+  };
+
   // ✅ FUNCIÓN CORREGIDA: Preserva orden y mejora parsing
   const procesarMensaje = async () => {
     if (!mensajeWhatsApp.trim()) {
@@ -1068,6 +1109,28 @@ PROD001 – Producto de ejemplo
           >
             <FileText size={16} />
             Importar PDF
+          </button>
+
+          {/* ✅ NUEVO BOTÓN: Pegar Texto PDF */}
+          <button
+            onClick={() => setMostrarPegarTextoPDF(true)}
+            disabled={procesando}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '12px 24px',
+              border: 'none',
+              borderRadius: '8px',
+              backgroundColor: procesando ? '#9ca3af' : '#0284c7',
+              color: 'white',
+              cursor: procesando ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              fontWeight: '600'
+            }}
+          >
+            <Copy size={16} />
+            Pegar Texto PDF
           </button>
           
           <button
@@ -1657,6 +1720,166 @@ PROD001 – Producto de ejemplo
               >
                 <FileText size={16} />
                 {procesando ? 'Procesando PDF...' : 'Procesar PDF'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ MODAL PARA "PEGAR TEXTO PDF" */}
+      {mostrarPegarTextoPDF && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            maxWidth: '700px',
+            width: '90%',
+            maxHeight: '80vh',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <Copy size={24} style={{ color: '#0284c7' }} />
+              <h3 style={{ 
+                fontSize: '20px', 
+                fontWeight: '700', 
+                margin: 0, 
+                color: '#1f2937' 
+              }}>
+                Pegar Contenido de PDF
+              </h3>
+            </div>
+            
+            <div style={{
+              backgroundColor: '#e0f2fe',
+              border: '2px solid #0284c7',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '20px'
+            }}>
+              <p style={{ 
+                fontSize: '14px', 
+                color: '#0c4a6e', 
+                margin: '0 0 8px 0',
+                fontWeight: '600'
+              }}>
+                📝 Instrucciones:
+              </p>
+              <ol style={{ 
+                fontSize: '13px', 
+                color: '#075985', 
+                margin: '0',
+                paddingLeft: '16px'
+              }}>
+                <li>Abre tu archivo PDF en cualquier visor</li>
+                <li>Selecciona todo el contenido (Ctrl+A)</li>
+                <li>Copia el texto (Ctrl+C)</li>
+                <li>Pega aquí abajo (Ctrl+V)</li>
+                <li>Click "Procesar Texto"</li>
+              </ol>
+            </div>
+
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              <label style={{ 
+                fontSize: '14px', 
+                fontWeight: '600', 
+                color: '#374151', 
+                marginBottom: '8px' 
+              }}>
+                Contenido del PDF:
+              </label>
+              
+              <textarea
+                value={textoPDF}
+                onChange={(e) => setTextoPDF(e.target.value)}
+                placeholder="Pega aquí el contenido completo de tu PDF...
+
+Ejemplo esperado:
+PEDIDO MARÉ
+Cliente: Nombre del Cliente
+Fecha: 18/8/2025
+Detalle del pedido:
+
+CÓDIGO1 – Descripción del producto 1
+- Surtido: 12
+CÓDIGO2 – Descripción del producto 2  
+- Negro: 6
+- Blanco: 6
+..."
+                style={{
+                  flex: 1,
+                  minHeight: '200px',
+                  maxHeight: '300px',
+                  padding: '12px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontFamily: 'monospace',
+                  resize: 'none',
+                  outline: 'none'
+                }}
+              />
+            </div>
+            
+            <div style={{ 
+              display: 'flex', 
+              gap: '12px', 
+              justifyContent: 'flex-end',
+              marginTop: '20px'
+            }}>
+              <button
+                onClick={() => {
+                  setMostrarPegarTextoPDF(false);
+                  setTextoPDF('');
+                }}
+                disabled={procesando}
+                style={{
+                  padding: '12px 20px',
+                  backgroundColor: '#f3f4f6',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: procesando ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Cancelar
+              </button>
+              
+              <button
+                onClick={procesarTextoPDF}
+                disabled={procesando || !textoPDF.trim()}
+                style={{
+                  padding: '12px 20px',
+                  backgroundColor: procesando || !textoPDF.trim() ? '#9ca3af' : '#0284c7',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: procesando || !textoPDF.trim() ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <Copy size={16} />
+                {procesando ? 'Procesando...' : 'Procesar Texto'}
               </button>
             </div>
           </div>
