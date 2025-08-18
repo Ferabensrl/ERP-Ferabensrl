@@ -648,8 +648,14 @@ PROD001 – Producto de ejemplo
 
       console.log('📝 Mensaje limpio:', mensajeLimpio);
 
-      // EXTRAER CLIENTE REAL del mensaje
-      const clienteMatch = mensajeLimpio.match(/👤 Cliente:\s*(.+)/);
+      // EXTRAER CLIENTE REAL del mensaje (móvil y web)
+      let clienteMatch = mensajeLimpio.match(/👤 Cliente:\s*(.+)/); // WhatsApp móvil
+      if (!clienteMatch) {
+        clienteMatch = mensajeLimpio.match(/� Cliente:\s*(.+)/); // WhatsApp Web
+      }
+      if (!clienteMatch) {
+        clienteMatch = mensajeLimpio.match(/Cliente:\s*(.+)/i); // Fallback general
+      }
       const clienteNombre = clienteMatch ? clienteMatch[1].trim() : 'Cliente no detectado';
 
       // ✅ CORRECCIÓN 2: Extraer comentario final ANTES de dividir productos
@@ -717,11 +723,17 @@ PROD001 – Producto de ejemplo
       for (let index = 0; index < bloques.length; index++) {
         const bloque = bloques[index];
         
-        const matchProducto = bloque.match(/([A-Z0-9-]+)\s*–\s*([^\n]+)/);
-        if (!matchProducto) continue;
+        // ✅ MEJORAR REGEX para códigos con espacios (ej: W807 B)
+        const matchProducto = bloque.match(/([A-Z0-9-]+(?:\s+[A-Z0-9]+)*)\s*[–-]\s*([^\n]+)/);
+        if (!matchProducto) {
+          console.warn('❌ No se pudo parsear bloque:', bloque.substring(0, 50) + '...');
+          continue;
+        }
 
         const codigo = matchProducto[1].trim();
         const descripcion = matchProducto[2].trim();
+        
+        console.log(`🔍 Producto ${index + 1}: "${codigo}" - ${descripcion}`);
 
         console.log(`🔍 Producto ${index + 1}: ${codigo} - ${descripcion}`);
 
