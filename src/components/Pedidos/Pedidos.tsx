@@ -1078,11 +1078,11 @@ const Pedidos: React.FC<PedidosProps> = ({
                 <div className={styles.pedidoCardHeader}>
                   <div>
                     <h3 className={styles.pedidoCardTitle}>
-                      {pedido.numero}
+                      {pedido.cliente.nombre}
                     </h3>
                     <div className={styles.clientInfo}>
                       <User size={16} />
-                      <span>{pedido.cliente.nombre}</span>
+                      <span>{pedido.numero}</span>
                     </div>
                     {pedido.cliente.telefono && (
                       <p>{pedido.cliente.telefono}</p>
@@ -1248,9 +1248,9 @@ const Pedidos: React.FC<PedidosProps> = ({
 
           <div>
             <h2 className={styles.pageTitle} style={{fontSize: '24px', marginBottom: 0}}>
-              {pedidoSeleccionado.numero}
+              {pedidoSeleccionado.cliente.nombre}
             </h2>
-            <p className={styles.pageSubtitle}>{pedidoSeleccionado.cliente.nombre}</p>
+            <p className={styles.pageSubtitle}>{pedidoSeleccionado.numero}</p>
           </div>
         </div>
 
@@ -1400,7 +1400,7 @@ const Pedidos: React.FC<PedidosProps> = ({
                 🏪 MODO DEPÓSITO
               </h2>
               <p style={{ fontSize: '14px', opacity: 0.8, margin: 0 }}>
-                {pedidoSeleccionado.numero} - {pedidoSeleccionado.cliente.nombre}
+                {pedidoSeleccionado.cliente.nombre} - {pedidoSeleccionado.numero}
               </p>
             </div>
           </div>
