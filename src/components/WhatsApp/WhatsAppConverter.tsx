@@ -626,14 +626,35 @@ PROD001 – Producto de ejemplo
 
       setClienteDetectado(cliente);
 
-      // ✅ CORRECCIÓN 3: Dividir mensaje EXCLUYENDO la parte del comentario final
-      const parteProductos = mensajeLimpio
+      // ✅ CORRECCIÓN 3: Dividir mensaje con múltiples patrones (mobile y web)
+      let parteProductos = mensajeLimpio
         .split('✍ Comentario final:')[0] // Todo ANTES del comentario final
-        .split('📦 Detalle del pedido:')[1]; // Todo DESPUÉS del encabezado
+        .split('📦 Detalle del pedido:')[1]; // Todo DESPUÉS del encabezado (móvil)
+
+      // ✅ FALLBACK para WhatsApp Web con caracteres especiales
+      if (!parteProductos) {
+        parteProductos = mensajeLimpio
+          .split('✍ Comentario final:')[0]
+          .split('� Detalle del pedido:')[1]; // WhatsApp Web
+      }
+
+      // ✅ FALLBACK case insensitive
+      if (!parteProductos) {
+        const regex = /detalle del pedido:/i;
+        const match = mensajeLimpio.match(regex);
+        if (match) {
+          const indice = mensajeLimpio.indexOf(match[0]) + match[0].length;
+          parteProductos = mensajeLimpio.substring(indice);
+          if (parteProductos.includes('✍ Comentario final:')) {
+            parteProductos = parteProductos.split('✍ Comentario final:')[0];
+          }
+        }
+      }
 
       if (!parteProductos) {
-        console.warn('⚠️ No se encontró la sección de productos');
-        return;
+        console.warn('⚠️ No se encontró la sección de productos en procesamiento principal');
+        console.log('🔍 Intentando con detectores alternativos...');
+        // No hacer return aquí, dejar que el fallback de WhatsApp Web funcione
       }
 
       console.log('📦 Parte de productos:', parteProductos);
@@ -641,8 +662,16 @@ PROD001 – Producto de ejemplo
       // EXTRAER PRODUCTOS preservando orden original
       const productosDetectados: ProductoDetectado[] = [];
       
-      // ✅ CORRECCIÓN 4: Dividir en bloques preservando orden
-      const bloques = parteProductos.split('🔹').slice(1); // Quitar el primer elemento vacío
+      // ✅ CORRECCIÓN 4: Dividir en bloques preservando orden (móvil y web)
+      let bloques = parteProductos ? parteProductos.split('🔹').slice(1) : []; // Móvil con emojis
+      
+      // Si no hay bloques con 🔹, intentar con � (WhatsApp Web)
+      if (bloques.length === 0 && parteProductos) {
+        console.log('🌐 Detectando productos de WhatsApp Web...');
+        bloques = parteProductos.split('�').slice(1).filter(b => b.trim()); // WhatsApp Web
+      }
+      
+      console.log('📦 Bloques detectados:', bloques.length);
       
       for (let index = 0; index < bloques.length; index++) {
         const bloque = bloques[index];
