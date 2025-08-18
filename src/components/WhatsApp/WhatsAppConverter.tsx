@@ -269,9 +269,23 @@ const WhatsAppConverter: React.FC = () => {
   const procesarPDF = async (contenidoPDF: string): Promise<{ cliente: ClienteDetectado; productos: ProductoDetectado[] }> => {
     console.log('📄 Procesando PDF de pedido...');
     
-    // Extraer cliente del PDF (ignorar caracteres basura como Ø=Üd)
-    let clienteMatch = contenidoPDF.match(/[Ø=Üd\s]*C\s*l\s*i\s*e\s*n\s*t\s*e\s*:\s*(.+)/i);
-    let clienteNombre = clienteMatch ? clienteMatch[1].trim().replace(/\s+/g, '') : 'Cliente PDF'; // Quitar espacios: "l o g i f i l s a" → "logifilsa"
+    // Extraer cliente del PDF: detectar ambos formatos
+    // Formato 1 (caracteres basura): "Ø=Üd C l i e n t e : l o g i f i l s a"
+    // Formato 2 (limpio): "Cliente: patricia rivero"
+    let clienteMatch = contenidoPDF.match(/[Ø=Üd\s]*C\s*l\s*i\s*e\s*n\s*t\s*e\s*:\s*(.+)/i); // Formato 1
+    
+    if (!clienteMatch) {
+      clienteMatch = contenidoPDF.match(/Cliente:\s*(.+)/i); // Formato 2: normal
+    }
+    
+    let clienteNombre = 'Cliente PDF';
+    if (clienteMatch) {
+      const clienteRaw = clienteMatch[1].trim();
+      // Si tiene muchos espacios internos = Formato 1, limpiar. Si no = Formato 2, mantener
+      clienteNombre = clienteRaw.includes(' ') && clienteRaw.split(' ').length > 3 
+        ? clienteRaw.replace(/\s+/g, '') // Formato 1: "l o g i f i l s a" → "logifilsa"
+        : clienteRaw; // Formato 2: "patricia rivero" → "patricia rivero"
+    }
 
     const cliente: ClienteDetectado = {
       nombre: clienteNombre,
@@ -290,16 +304,22 @@ const WhatsAppConverter: React.FC = () => {
     for (let i = 0; i < lineas.length; i++) {
       const linea = lineas[i].trim();
       
-      // Buscar patrón del PDF: ignorar caracteres basura + capturar CÓDIGO completo
-      // ✅ CORREGIDO: Capturar "E A 2 2 0 0 3 - 2" → "EA22003-2" (todo hasta el guión largo –)
-      const matchProducto = linea.match(/[⦿Ø=Ý9\s]*([^–]+?)\s*–\s*(.+)/);
+      // Buscar patrón del PDF: detectar ambos formatos automáticamente
+      // Formato 1 (caracteres basura): "Ø=Ý9 E A 2 2 0 0 3 - 2 – A r o s..."
+      // Formato 2 (limpio): "> FN8104 - Bandolera gatita"
+      let matchProducto = linea.match(/[⦿Ø=Ý9\s]*([^–]+?)\s*–\s*(.+)/); // Formato 1: guión largo –
+      
+      if (!matchProducto) {
+        matchProducto = linea.match(/>\s*([A-Z0-9-]+)\s*-\s*(.+)/); // Formato 2: > CÓDIGO - descripción
+      }
       
       if (matchProducto) {
         const codigoRaw = matchProducto[1].trim();
         const codigo = codigoRaw.replace(/\s+/g, ''); // Limpiar espacios: "2 9 1 7 2" → "29172"
         const descripcion = matchProducto[2].trim();
         
-        console.log(`🔍 PDF Producto: "${codigoRaw}" → "${codigo}" - ${descripcion}`);
+        const formato = linea.includes('–') ? 'Formato 1 (caracteres basura)' : 'Formato 2 (limpio)';
+        console.log(`🔍 PDF Producto (${formato}): "${codigoRaw}" → "${codigo}" - ${descripcion}`);
 
         // Buscar variantes en las líneas siguientes
         const variantes: VarianteProducto[] = [];
