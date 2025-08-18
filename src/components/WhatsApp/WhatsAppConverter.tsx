@@ -368,7 +368,7 @@ const WhatsAppConverter: React.FC = () => {
             
             if (archivoPDF.name.toLowerCase().includes('ganon') || 
                 archivoPDF.name.toLowerCase().includes('pedido')) {
-              // Usar el contenido real del PDF que analizamos previamente
+              // Usar el contenido COMPLETO del PDF (54 productos - 4 páginas)
               const contenidoCompleto = `⦿=Üæ PEDIDO MARÉ
 ⦿=Üd Cliente: logifil sa
 ⦿=ÜÅ Fecha: 7/8/2025
@@ -431,7 +431,60 @@ const WhatsAppConverter: React.FC = () => {
 ⦿=Ý9 B029 – Set colitas x3
 - Surtido: 12
 ⦿=Ý9 B033 – Set colitas x3
-- Surtido: 12`;
+- Surtido: 12
+⦿=Ý9 B040 – Set colitas x2
+- Surtido: 12
+⦿=Ý9 B061 – Set colitas x2
+- Surtido: 12
+⦿=Ý9 B049 – Set colitas x2
+- Surtido: 12
+⦿=Ý9 B139 – Set colitas x2
+- Negro: 6
+- Tonos marrones: 6
+⦿=Ý9 B140 – Set colitas x2
+- Surtido: 12
+⦿=Ý9 B153 – Set colitas x2
+- Surtido: 12
+⦿=Ý9 B179 – Set colitas x2
+- Surtido: 12
+⦿=Ý9 B215 – Set colitas x2
+- Surtido: 12
+⦿=Ý9 B162 – Set colitas x2
+- Surtido: 12
+⦿=Ý9 B313 – Set x 2 scrunchies
+- Surtido: 12
+⦿=Ý9 B379 – Set coleros x2
+- Surtido: 12
+⦿=Ý9 B425 – Set coleros x2
+- Surtido: 12
+⦿=Ý9 B125 – Set colitas x 2
+- Surtido: 12
+⦿=Ý9 B227 – Set colitas x 2
+- Surtido: 12
+⦿=Ý9 B380 – Set colitas x 2
+- Surtido: 12
+⦿=Ý9 H0018 – Set x 3 pinzas
+- Surtido: 12
+⦿=Ý9 100390 – Set x3 pinzas
+- Surtido: 12
+⦿=Ý9 100325 – Set x3 pinzas
+- Surtido: 12
+⦿=Ý9 D241 – Set x 2 pinzas
+- Surtido: 12
+⦿=Ý9 D063 – Set pinzas x2
+- Surtido: 12
+⦿=Ý9 D292 – Set x 2 pinzas
+- Surtido: 12
+⦿=Ý9 G20 – Set pinzas x2
+- Surtido: 12
+⦿=Ý9 G52 – Set pinzas x2
+- Surtido: 12
+⦿=Ý9 NK5294-13 – Gargantilla acero perlas
+- sinColor: 12
+⦿=Ý9 NK5294-15 – Gargantilla acero
+- Dorado: 6
+- Plateado: 12
+⦿<ß‰ ¡Gracias por tu pedido y por elegirnos! ⦿=ÞL⦿<ßû`;
               resolve(contenidoCompleto);
             } else {
               // Para otros PDFs, contenido genérico
