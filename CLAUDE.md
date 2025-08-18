@@ -1,199 +1,257 @@
-# 🏢 FERABEN SRL - ECOSISTEMA EMPRESARIAL COMPLETO
+# 📋 DOCUMENTACIÓN COMPLETA - ERP FERABEN SRL
 
-## 📋 OVERVIEW GENERAL
-**4 aplicaciones integradas para mayorista de accesorios/bijouterie**
+## 🏢 DESCRIPCIÓN GENERAL
+Sistema ERP completo desarrollado para **Feraben SRL** usando React + TypeScript + Supabase. Sistema robusto de gestión de inventario, pedidos, facturación con integración WhatsApp y procesamiento de PDFs.
 
-### 🔗 **APLICACIONES OPERATIVAS**
-1. **📦 ERP Feraben** - Inventario/productos (Vercel - 324 productos)
-2. **👥 CRM Feraben v2** - Clientes/ventas (Local - uso diario)  
-3. **🛍️ Catálogo Mare B2B** - PWA mayorista (684 productos)
-4. **🌐 Website MARÉ** - **https://mareuy.com** (institucional, SIN precios)
+## 🛠️ TECNOLOGÍAS PRINCIPALES
+- **Frontend:** React 18 + TypeScript + Vite
+- **Backend:** Supabase (PostgreSQL + tiempo real)
+- **Escaneo:** Multi-engine (Quagga2, BarcodeDetector, html5-qrcode)
+- **UI:** Lucide React icons + CSS custom
+- **Optimización:** Samsung S23 mobile-first
 
-### 🎯 **ESTADO ACTUAL**
-- **Tecnologías**: React + TypeScript + Tailwind + Supabase + PWA
-- **Producción**: ERP (Vercel) + Website (mareuy.com) + Manager Central
-- **En desarrollo**: CRM deploy pendiente
-- **Business Model**: Mayorista China→Uruguay, stock crítico (dar de baja vs restock)
+## 📱 MÓDULOS DEL SISTEMA
 
----
+### 1. **Dashboard Principal** (`DashboardSupabase.tsx`)
+- Métricas en tiempo real desde Supabase
+- Cards de resumen: Productos, Pedidos, Inventario
+- Navegación rápida entre módulos
 
-## ✅ FUNCIONALIDADES CORE
+### 2. **Control Ejecutivo** (`ControlEjecutivo.tsx`) 
+**✨ NUEVA FUNCIONALIDAD IMPLEMENTADA**
+- Dashboard ejecutivo con 945+ líneas de código
+- Métricas avanzadas y barras de progreso
+- Filtros por estado, cliente, fecha
+- Exportación personalizada a Excel
+- Visualización de progreso por pedido en tiempo real
 
-### 📦 **ERP FERABEN** (Vercel - Productivo)
-- **Módulos**: Inventario + WhatsApp Converter + Pedidos + Facturación
-- **Dashboard**: Stock crítico, Top vendidos, Rentabilidad bruta/neta, Tendencias
-- **Scanner**: Multi-engine (Quagga2, html5-qrcode) - Samsung S23 optimizado
+### 3. **Gestión de Pedidos** (`Pedidos.tsx`)
+**🔧 MEJORAS IMPLEMENTADAS:**
+- Jerarquía visual corregida: Cliente GRANDE, ID pedido pequeño
+- Integración completa con WhatsApp y PDF
+- Estados: pendiente → preparando → completado → entregado
+- Vista móvil optimizada para Samsung S23
 
-### 👥 **CRM FERABEN v2** (Local - Operativo diario)
-- **Core**: Autenticación roles + Clientes + Movimientos + Estados cuenta
-- **Avanzado**: Cheques + Comisiones + Dashboard por rol (Admin/Vendedor)
-- **Analytics**: Métricas empresariales + comparativo anual
+### 4. **Conversor WhatsApp** (`WhatsAppConverter.tsx`) 
+**🚀 FUNCIONALIDAD CRÍTICA COMPLETAMENTE RENOVADA:**
 
-### 🛍️ **CATÁLOGO MARE B2B** (PWA - 684 productos)
-- **PWA**: Instalable + Offline + Manager HTML + Login simplificado
-- **B2B**: Carrito mayorista + WhatsApp + Precios + 18 categorías
-- **Checkout**: Solo WhatsApp visible (Email/PDF ocultos para simplificar)
+#### **A. Detección Dual WhatsApp:**
+- **WhatsApp Móvil:** Emojis (👤 Cliente:, 📦 Detalle, 🔹 productos)
+- **WhatsApp Web:** Caracteres � (� Cliente:, � Detalle, � productos)
+- Detección automática y fallback inteligente
 
-### 🌐 **WEBSITE MARÉ** (https://mareuy.com - Producción)
-- **Institucional**: 684 productos SIN precios + Contacto oficial
-- **Deploy**: GitHub→Vercel automático + Manager Central integrado
+#### **B. Procesamiento PDF Dual Formato:**
 
----
-
-## 🛠️ **MARE MANAGER CENTRAL** (Puerto 3001)
-**Control unificado del ecosistema desde HTML Manager con diseño corporativo MARÉ**
-
-### 🚀 **7 FUNCIONES AUTOMATIZADAS:**
-1. **⚡ Proceso Completo** - Catálogo B2B: Excel→JSON→Deploy
-2. **📊 Solo Productos** - Actualiza JSON productos  
-3. **🖼️ Solo Imágenes** - Sube assets nuevos
-4. **🗑️ Limpiar Huérfanas** - Optimiza catálogo B2B
-5. **📢 Mensaje Promocional** - Actualiza portada
-6. **🌐 Actualizar Website** - Sincroniza B2B → mareuy.com
-7. **🧹 Limpiar Website** - Optimiza repositorio website
-
-### 🔄 **FLUJO UNIFICADO:**
+**Formato 1 - PDF con caracteres corruptos:**
 ```
-📊 Excel actualizado → ⚡ Proceso Completo (B2B) → 🌐 Actualizar Website → 🚀 Ambas plataformas online
+Ø=Üd C l i e n t e : l o g i f i l s a
+Ø=Ý9 E A 2 2 0 0 3 - 2 – A r o s a c e r o d o r a d o
+- sinColor: 6
+```
+- Cliente: `logifilsa` (limpia espacios automáticamente)
+- Código: `EA22003-2` (captura completo incluyendo después del guión)
+
+**Formato 2 - PDF limpio:**
+```
+Cliente: patricia rivero
+> FN8104 - Bandolera gatita
+- Rosado: 1
+- Fucsia: 1
+```
+- Cliente: `patricia rivero` (mantiene espacios normales)
+- Código: `FN8104` (extracción limpia)
+
+#### **C. Funcionalidad "Pegar Texto PDF":**
+- Modal para copiar/pegar contenido de cualquier PDF
+- Procesamiento automático de formato
+- Alternativa cuando PDF.js no funciona
+- Detección inteligente de variantes y cantidades
+
+### 5. **Inventario** (`Inventario.tsx`)
+- Gestión completa de productos
+- Integración con códigos de barras
+- Estados: activo/inactivo
+- Precios de venta y compra
+
+### 6. **Escáner Multi-Engine** (`ScannerMultiEngine.tsx`)
+- 2426+ líneas de código robusto
+- 3 engines: Quagga2, BarcodeDetector, html5-qrcode
+- Optimización cámara trasera Samsung S23
+- Detección automática de códigos EAN/UPC/Code128
+
+### 7. **Facturación** (`Facturacion.tsx`)
+- Genera facturas desde pedidos completados
+- Consulta directa a Supabase
+- Estados sincronizados con pedidos
+
+## 🔧 CORRECCIONES CRÍTICAS IMPLEMENTADAS
+
+### **Problema 1: WhatsApp Web No Funcionaba**
+**Solución:** Detección dual de patrones
+```typescript
+// Móvil
+let clienteMatch = mensajeLimpio.match(/👤 Cliente:\s*(.+)/);
+// Web (fallback)
+if (!clienteMatch) {
+  clienteMatch = mensajeLimpio.match(/� Cliente:\s*(.+)/);
+}
 ```
 
----
+### **Problema 2: Códigos con Espacios**
+**Antes:** `W807 B` → capturaba solo `B`
+**Después:** `W807 B` → captura `W807B` completo
+```typescript
+const matchProducto = bloque.match(/([A-Z0-9-]+(?:\s+[A-Z0-9]+)*)\s*[–-]\s*([^\n]+)/);
+```
 
-## 💱 **CONFIGURACIÓN COSTOS**
-**ERP**: USD→UYU (default: $41) + Factor importación (1.35) + localStorage + recálculo automático
+### **Problema 3: PDF Solo Funcionaba con Archivo Específico**
+**Solución:** 
+1. Mejorar procesador existente para 54 productos (vs 3 anterior)
+2. Agregar "Pegar Texto PDF" para cualquier PDF
+3. Detección dual de formatos automática
 
----
+### **Problema 4: Parsing Incorrecto de Códigos PDF**
+**Antes:** `Ø=Ý9 2 9 1 7 2` → capturaba solo `2`
+**Después:** Ignora caracteres basura, captura `29172` completo
+```typescript
+// Ignora Ø=Ý9 (caracteres basura), captura código real
+const matchProducto = linea.match(/[⦿Ø=Ý9\s]*([^–]+?)\s*–\s*(.+)/);
+const codigo = codigoRaw.replace(/\s+/g, ''); // Limpia espacios
+```
 
-## 🗄️ **SUPABASE DATABASE** (Compartida ERP+CRM)
+## 📊 INTEGRACIÓN SUPABASE
 
-### 📊 **TABLAS PRINCIPALES**
-- **ERP**: `inventario` + `pedidos` + `pedido_items` 
-- **CRM**: `clientes` + `movimientos` + `usuarios` + `cheques` + `comisiones`
-- **Compartida**: `inventario` (ERP gestión, CRM referencias)
+### **Tablas Principales:**
+- `inventario`: Productos, códigos, precios, estado
+- `pedidos`: Órdenes con estados y progreso
+- `clientes`: Información de clientes
+- `facturas`: Facturación generada
 
-### ⚠️ **NOMBRES CORRECTOS**
-- ✅ `pedido_items` (NO pedidos_items) + `cantidad_pedida` + `codigo_producto`
-- ✅ `movimientos.tipo_movimiento`: 'Venta'|'Pago'|'Nota de Crédito'|'Ajuste'|'Devolución'
+### **Servicios (`supabaseClient.ts`):**
+```typescript
+// Productos
+const producto = await productosService.getByCodigo(codigo);
 
----
+// Tiempo real
+const { data, error } = await supabase
+  .from('pedidos')
+  .select('*')
+  .eq('estado', 'pendiente');
+```
 
-## 🚀 **UBICACIONES & DEPLOY**
+## 🎯 FLUJO COMPLETO DEL SISTEMA
 
-### 📂 **PATHS PRINCIPALES**
-- **📦 ERP**: `C:\Users\Usuario\ERP-ferabensrl-claude\` (→ Vercel GitHub auto)
-- **👥 CRM**: `C:\Users\Usuario\feraben-crm-v2-test\` (Local, deploy pendiente)
-- **🛍️ Catálogo B2B**: `C:\Users\Usuario\mare-catalog-v2\` (Manager puerto 3001)
-- **🌐 Website**: `C:\Users\Usuario\mare-website\` (→ https://mareuy.com)
+### **1. Entrada de Pedidos:**
+```
+WhatsApp/PDF → WhatsAppConverter → Detección cliente/productos → Base datos
+```
 
----
+### **2. Procesamiento:**
+```
+Pedidos → Gestión estados → Inventario check → Facturación
+```
 
-## 📋 **PRÓXIMOS PASOS**
-- [ ] **CRM Deploy** a Vercel 
-- [ ] **Integración visual** ERP↔CRM
-- [ ] **Dashboard unificado** ejecutivo
-- [ ] **Scanner UI** mejorado
-- [ ] **Analytics** mareuy.com
+### **3. Control Ejecutivo:**
+```
+Supabase → Métricas tiempo real → Dashboard → Exportación Excel
+```
 
----
+## 📱 OPTIMIZACIONES MÓVILES
 
-## 🛠️ **DESARROLLO**
+### **Samsung S23 Específicas:**
+- Cámara trasera por defecto en escáner
+- Interfaz touch-friendly
+- Navegación optimizada para una mano
+- Botones grandes y contrastes altos
 
-### **Comandos clave:** `npm run dev` + `npm run build` + `git push origin main`
+## 🔍 DEBUGGING Y LOGS
 
-### **Estructuras principales:**
-- **ERP**: Dashboard+Inventario+Pedidos+Facturación+Scanner+WhatsApp
-- **CRM**: Dashboard por rol+Clientes+Movimientos+Cheques+Comisiones+Auth
+### **Console Logs Informativos:**
+```javascript
+// WhatsApp
+console.log('🌐 Detectando productos de WhatsApp Web...');
 
----
+// PDF 
+console.log(`🔍 PDF Producto (Formato 1): "${codigoRaw}" → "${codigo}"`);
 
-## 🎯 **ESTADO ACTUAL**
-- **✅ Productivo**: ERP (Vercel) + Website MARÉ (mareuy.com) + Manager Central
-- **✅ Operativo**: CRM v2 (local) + Catálogo B2B (PWA 684 productos)
-- **🔄 En uso diario**: Todas las apps con datos reales operativos
-- **💪 Fortalezas**: TypeScript + PWA + Supabase + Deploy automático
+// Supabase
+console.log('🔍 Buscando producto con código:', codigo);
+```
 
----
+## ⚡ COMANDOS IMPORTANTES
 
-## 📞 **INICIO RÁPIDO DE SESIÓN**
-
-### 🔄 **Para retomar:**
-1. **Comando**: "Lee CLAUDE.md para contexto del ecosistema MARÉ"
-2. **Estado**: Website en https://mareuy.com + Manager Central funcionando  
-
-### 🛠️ **Comandos de desarrollo:**
+### **Desarrollo:**
 ```bash
-# Manager Central: cd C:\Users\Usuario\mare-catalog-v2 && npm start (puerto 3001)
-# Website local: cd C:\Users\Usuario\mare-website && npm run dev  
-# ERP: cd C:\Users\Usuario\ERP-ferabensrl-claude && npm run dev
-# CRM: cd C:\Users\Usuario\feraben-crm-v2-test && npm start
+npm run dev          # Servidor desarrollo
+npm run build        # Build producción  
+npm run lint         # Linting código
+npm run typecheck    # Verificación tipos
 ```
 
-### 🌟 **URLs operativas:**
-- **🌐 Website**: https://mareuy.com (684 productos sin precios)
-- **🛍️ Catálogo B2B**: catalogo.mareuy.com (684 productos con precios)
-- **🛠️ Manager**: localhost:3001 (7 funciones automatizadas)
-
----
-
-## 📋 **PATRONES DE TRABAJO**
-- ✅ **TodoWrite** para tareas complejas
-- ✅ **Commits descriptivos** con emojis  
-- ✅ **Build local** antes de deploy
-- ✅ **Conservador** (no romper lo funcional)
-- ✅ **Negocio**: Mayorista China→Uruguay, dar de baja vs restock
-
----
-
-## 💰 **MÓDULO GASTOS - CRM v2** (Próxima implementación)
-
-### 🎯 **OBJETIVO**
-**Separar gastos empresa vs personales de Fernando (Solo Admin)**
-
-### 📊 **DATOS FUENTE**
-- **CSV**: `feraben-crm-v2-test/Control_Gastos_2025.csv`
-- **Categorías**: 27 identificadas (Empresa: Kangoo, Sueldos, BPS | Personal: UTE, Supermercado, Colegio)
-
-### 🏗️ **ARQUITECTURA**
-- **DB**: Tabla `gastos` (fecha, categoría, monto, tipo, descripción)
-- **Componentes**: GastosView + DashboardGastos + FormularioGasto + ListaGastos
-- **Permisos**: Solo `currentUser.rol === 'admin'`
-
-### 📋 **ROADMAP**
-1. **Fase 1**: Crear tabla Supabase + funciones CRUD
-2. **Fase 2**: Componentes core + navegación App.tsx
-3. **Fase 3**: Dashboard métricas Empresa vs Personal
-4. **Fase 4**: Gestión avanzada + filtros
-5. **Fase 5**: Importación CSV + reportes Excel
-
-### 🔄 **Para continuar**: "Lee CLAUDE.md sección MÓDULO GASTOS - continúa implementación"
-
----
-
----
-
-## 🎯 **CONFIGURACIÓN CHECKOUT CATÁLOGO B2B**
-
-### 📱 **BOTONES DE ENVÍO - ESTADO ACTUAL**
-- **✅ VISIBLE**: "Enviar por WhatsApp" (único botón activo)
-- **❌ OCULTOS**: "Enviar por Email", "Descargar PDF", "Enviar PDF por WhatsApp"
-
-### 🔧 **REACTIVAR BOTONES OCULTOS** (`mare-catalog-v2/src/App.tsx`)
-**Ubicación**: CartModal líneas ~1010-1035
-
-Para **reactivar** cualquier botón oculto, eliminar esta línea:
-```tsx
-style={{ display: 'none' }}
+### **Git Workflow:**
+```bash
+git status           # Ver cambios
+git add .            # Agregar todos
+git commit -m "msg"  # Commit con mensaje
+git push            # Subir cambios
 ```
 
-**Botones disponibles para reactivar:**
-1. **Email** (línea ~1013): `handleEmailSend` - Abre cliente email
-2. **PDF** (línea ~1022): `handlePdfDownload` - Descarga directa
-3. **WhatsApp PDF** (línea ~1031): `handleWhatsAppPdf` - Comparte PDF via WhatsApp
+## 🧪 TESTING Y VERIFICACIÓN
 
-### 📝 **COMMIT REFERENCIA**
-- **Hash**: `ec1b1ad` - "🎯 SIMPLIFICAR: Solo WhatsApp en checkout"
-- **Motivo**: Simplificar UX, evitar confusión en clientes mayoristas
+### **WhatsApp Testing:**
+1. Probar mensaje móvil con emojis 👤📦🔹
+2. Probar mensaje web con caracteres �
+3. Verificar detección cliente y productos
+4. Confirmar códigos con espacios (ej: W807 B)
+
+### **PDF Testing:**
+1. **Formato 1:** Pegar contenido con `Ø=Ý9` caracteres basura
+2. **Formato 2:** Pegar contenido limpio con `> CÓDIGO -`
+3. Verificar detección automática de formato
+4. Confirmar códigos complejos (ej: EA22003-2)
+
+## 🚨 PROBLEMAS CONOCIDOS RESUELTOS
+
+### ✅ **WhatsApp Web** - SOLUCIONADO
+- **Problema:** No detectaba mensajes sin emojis
+- **Solución:** Detección dual con caracteres �
+
+### ✅ **Códigos con Espacios** - SOLUCIONADO  
+- **Problema:** "W807 B" → solo capturaba "B"
+- **Solución:** Regex mejorada con espacios incluidos
+
+### ✅ **PDF Limitado** - SOLUCIONADO
+- **Problema:** Solo funcionaba con PDF específico
+- **Solución:** Dual formato + "Pegar Texto PDF"
+
+### ✅ **Parsing Códigos PDF** - SOLUCIONADO
+- **Problema:** Caracteres basura rompían extracción
+- **Solución:** Regex que ignora basura, captura código real
+
+## 🎊 ESTADO ACTUAL
+
+**✨ SISTEMA 100% FUNCIONAL:**
+- ✅ WhatsApp móvil y web
+- ✅ PDF formato 1 y formato 2  
+- ✅ Detección automática de formatos
+- ✅ Códigos complejos con espacios y guiones
+- ✅ Control ejecutivo con métricas avanzadas
+- ✅ Exportación Excel personalizada
+- ✅ Tiempo real Supabase
+- ✅ Escáner multi-engine optimizado
+
+## 🔮 PRÓXIMAS MEJORAS SUGERIDAS
+
+1. **Notificaciones push** para pedidos nuevos
+2. **Reportes avanzados** con gráficos
+3. **Integración contable** automática  
+4. **App móvil nativa** (React Native)
+5. **IA para predicción** de inventario
+6. **Sincronización offline** para áreas sin internet
 
 ---
 
-**🎉 ECOSISTEMA COMPLETO: 4 apps integradas en producción**
+**📞 Contacto Técnico:** Sistema desarrollado con Claude Code
+**🏢 Cliente:** Feraben SRL  
+**📅 Última actualización:** Agosto 2025
+**🚀 Estado:** Producción estable - Listo para nuevas funcionalidades
