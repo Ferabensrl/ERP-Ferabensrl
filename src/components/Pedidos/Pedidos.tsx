@@ -307,6 +307,9 @@ const Pedidos: React.FC<PedidosProps> = ({
   // ✅ NUEVOS ESTADOS PARA EDITAR PEDIDOS (solo agregados, nada modificado)
   const [mostrarModalEditar, setMostrarModalEditar] = useState(false);
   const [pedidoParaEditar, setPedidoParaEditar] = useState<Pedido | null>(null);
+  
+  // ✅ DEBUG: Log cada vez que cambian los estados
+  console.log('🔄 Render actual - Estados modal:', { mostrarModalEditar, pedidoParaEditar: pedidoParaEditar?.numero });
   const [buscarProducto, setBuscarProducto] = useState('');
   const [productosEncontrados, setProductosEncontrados] = useState<any[]>([]);
   const [cantidadAAgregar, setCantidadAAgregar] = useState(1);
@@ -1292,6 +1295,9 @@ const Pedidos: React.FC<PedidosProps> = ({
                       setPedidoParaEditar(pedido);
                       setMostrarModalEditar(true);
                       console.log('✅ Estados actualizados - Modal debería aparecer');
+                      
+                      // PRUEBA TEMPORAL: Forzar apertura 
+                      alert(`Modal debería abrirse para: ${pedido.numero}`);
                       
                       // Debug adicional después de un momento
                       setTimeout(() => {
