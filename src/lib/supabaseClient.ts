@@ -493,6 +493,71 @@ export const pedidosService = {
       console.error('❌ Error en finalizarPedidoCompleto:', error);
       throw error;
     }
+  },
+
+  // ✅ NUEVA FUNCIÓN: Actualizar productos de pedido editado
+  async actualizarProductosPedido(
+    pedidoId: number,
+    productos: Array<{
+      id: string;
+      codigo: string;
+      nombre: string;
+      cantidadPedida: number;
+      precio?: number;
+      comentario?: string;
+    }>
+  ): Promise<void> {
+    try {
+      console.log('🔄 Actualizando productos del pedido:', pedidoId);
+      
+      // 1. Eliminar todos los items existentes del pedido
+      const { error: deleteError } = await supabase
+        .from('pedido_items')
+        .delete()
+        .eq('pedido_id', pedidoId);
+
+      if (deleteError) {
+        console.error('❌ Error eliminando items existentes:', deleteError);
+        throw deleteError;
+      }
+
+      // 2. Insertar los nuevos items
+      const nuevosItems = productos.map(producto => ({
+        pedido_id: pedidoId,
+        codigo_producto: producto.codigo,
+        cantidad_pedida: producto.cantidadPedida,
+        cantidad_preparada: 0,
+        precio_unitario: producto.precio || 0,
+        estado: 'pendiente' as const,
+        variante_color: '',
+        comentarios: producto.comentario || ''
+      }));
+
+      const { error: insertError } = await supabase
+        .from('pedido_items')
+        .insert(nuevosItems);
+
+      if (insertError) {
+        console.error('❌ Error insertando nuevos items:', insertError);
+        throw insertError;
+      }
+
+      // 3. Actualizar timestamp del pedido
+      const { error: updateError } = await supabase
+        .from('pedidos')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', pedidoId);
+
+      if (updateError) {
+        console.error('❌ Error actualizando timestamp:', updateError);
+        throw updateError;
+      }
+
+      console.log('✅ Productos del pedido actualizados exitosamente');
+    } catch (error) {
+      console.error('❌ Error en actualizarProductosPedido:', error);
+      throw error;
+    }
   }
 }
 // PARTE 6/8 - UTILIDADES

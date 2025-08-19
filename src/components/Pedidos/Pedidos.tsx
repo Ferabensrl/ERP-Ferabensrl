@@ -1265,6 +1265,12 @@ const Pedidos: React.FC<PedidosProps> = ({
                     {pedido.productos.slice(0, 2).map(producto => (
                       <span key={producto.id}>
                         {producto.nombre} ({producto.cantidadPedida})
+                        {/* ✅ MOSTRAR comentario en vista lista */}
+                        {producto.comentario && (
+                          <span style={{ color: '#059669', fontSize: '12px', fontStyle: 'italic' }}>
+                            {' '}💬{producto.comentario}
+                          </span>
+                        )}
                         {pedido.productos.indexOf(producto) === 0 && pedido.productos.length > 1 ? ', ' : ''}
                       </span>
                     ))}
@@ -1367,6 +1373,33 @@ const Pedidos: React.FC<PedidosProps> = ({
             <Edit3 size={16} />
             {modoEdicion ? 'Cancelar Edición' : 'Editar Pedido'}
           </button>
+
+          {/* ✅ BOTÓN GUARDAR - Solo en modo edición */}
+          {modoEdicion && (
+            <button
+              onClick={async () => {
+                try {
+                  console.log('💾 Guardando cambios en Supabase...');
+                  
+                  await pedidosService.actualizarProductosPedido(
+                    parseInt(pedidoSeleccionado.id),
+                    pedidoSeleccionado.productos
+                  );
+                  
+                  alert('✅ Cambios guardados exitosamente en Supabase');
+                  setModoEdicion(false);
+                } catch (error) {
+                  console.error('❌ Error guardando:', error);
+                  alert('❌ Error guardando cambios. Intenta nuevamente.');
+                }
+              }}
+              className={styles.buttonSuccess}
+              style={{ backgroundColor: '#10b981' }}
+            >
+              <CheckCircle size={16} />
+              Guardar Cambios
+            </button>
+          )}
 
           <div>
             <h2 className={styles.pageTitle} style={{fontSize: '24px', marginBottom: 0}}>
@@ -1484,6 +1517,34 @@ const Pedidos: React.FC<PedidosProps> = ({
                         className={styles.quantityButton}
                       >
                         <Plus size={14} />
+                      </button>
+                      
+                      <button
+                        onClick={() => {
+                          // ✅ EDITAR COMENTARIO/VARIANTES del producto
+                          const nuevoComentario = prompt(
+                            `Editar comentario para ${producto.nombre}:\n(ej: 3 negro, 2 azul, 1 rojo)`,
+                            producto.comentario || ''
+                          );
+                          
+                          if (nuevoComentario !== null) {
+                            const pedidoActualizado = {
+                              ...pedidoSeleccionado,
+                              productos: pedidoSeleccionado.productos.map(p => 
+                                p.id === producto.id ? { ...p, comentario: nuevoComentario } : p
+                              )
+                            };
+                            setPedidos(prev => prev.map(p => 
+                              p.id === pedidoSeleccionado.id ? pedidoActualizado : p
+                            ));
+                            setPedidoSeleccionado(pedidoActualizado);
+                          }
+                        }}
+                        className={styles.buttonSecondary}
+                        style={{ marginLeft: '8px', padding: '4px', backgroundColor: '#f3f4f6' }}
+                        title="Editar comentario/colores"
+                      >
+                        <MessageSquare size={14} />
                       </button>
                       
                       <button
