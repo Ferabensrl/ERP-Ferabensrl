@@ -1292,6 +1292,15 @@ const Pedidos: React.FC<PedidosProps> = ({
                       setPedidoParaEditar(pedido);
                       setMostrarModalEditar(true);
                       console.log('✅ Estados actualizados - Modal debería aparecer');
+                      
+                      // Debug adicional después de un momento
+                      setTimeout(() => {
+                        console.log('🔍 Estado actual después de 100ms:', {
+                          mostrarModalEditar,
+                          pedidoParaEditar: pedidoParaEditar?.numero,
+                          condicionModal: mostrarModalEditar && pedidoParaEditar
+                        });
+                      }, 100);
                     }}
                     className={styles.buttonSecondary}
                   >
@@ -2066,14 +2075,12 @@ const Pedidos: React.FC<PedidosProps> = ({
         )}
 
         {/* ✅ NUEVO MODAL EDITAR PEDIDO - Solo agregado, no modifica nada existente */}
-        {mostrarModalEditar && pedidoParaEditar && (() => {
-          console.log('🎯 Renderizando modal editar. Estado:', { mostrarModalEditar, pedidoParaEditar: pedidoParaEditar?.numero });
-          return true;
-        })() && (
+        {mostrarModalEditar && pedidoParaEditar && (
           <div className={styles.modalOverlay}>
             <div className={styles.modal} style={{ maxWidth: '800px', maxHeight: '80vh', overflow: 'auto' }}>
               <h3 style={{ marginBottom: '20px', color: '#1f2937' }}>
                 ✏️ Editar Pedido: {pedidoParaEditar.numero}
+                {console.log('🎯 MODAL RENDERIZADO EXITOSAMENTE para:', pedidoParaEditar.numero)}
               </h3>
               
               {/* Cliente info */}
