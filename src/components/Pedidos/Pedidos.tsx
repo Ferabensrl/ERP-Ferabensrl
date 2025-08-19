@@ -309,6 +309,7 @@ const Pedidos: React.FC<PedidosProps> = ({
   const [buscarProducto, setBuscarProducto] = useState('');
   const [productosEncontrados, setProductosEncontrados] = useState<any[]>([]);
   const [cantidadAAgregar, setCantidadAAgregar] = useState(1);
+  const [comentarioProducto, setComentarioProducto] = useState('');
 
   // ✅ FUNCIÓN EXACTAMENTE IGUAL (sin cambios)
   const handleAgregarProducto = () => {
@@ -1415,6 +1416,12 @@ const Pedidos: React.FC<PedidosProps> = ({
                 <div>
                   <p>{producto.nombre}</p>
                   <p>Código: {producto.codigo}</p>
+                  {/* ✅ MOSTRAR comentario si existe */}
+                  {producto.comentario && (
+                    <p style={{ fontSize: '14px', color: '#059669', fontStyle: 'italic' }}>
+                      💬 {producto.comentario}
+                    </p>
+                  )}
                 </div>
 
                 <div style={{ textAlign: 'right' }}>
@@ -1423,9 +1430,20 @@ const Pedidos: React.FC<PedidosProps> = ({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
                       <button
                         onClick={() => {
-                          // Modificar cantidad del producto
+                          // ✅ PERMITIR cantidad 0 para eliminar producto
                           const nuevaCantidad = producto.cantidadPedida - 1;
-                          if (nuevaCantidad > 0) {
+                          if (nuevaCantidad === 0) {
+                            // Eliminar producto si cantidad es 0
+                            const pedidoActualizado = {
+                              ...pedidoSeleccionado,
+                              productos: pedidoSeleccionado.productos.filter(p => p.id !== producto.id)
+                            };
+                            setPedidos(prev => prev.map(p => 
+                              p.id === pedidoSeleccionado.id ? pedidoActualizado : p
+                            ));
+                            setPedidoSeleccionado(pedidoActualizado);
+                          } else if (nuevaCantidad > 0) {
+                            // Modificar cantidad normalmente
                             const pedidoActualizado = {
                               ...pedidoSeleccionado,
                               productos: pedidoSeleccionado.productos.map(p => 
@@ -1439,7 +1457,7 @@ const Pedidos: React.FC<PedidosProps> = ({
                           }
                         }}
                         className={styles.quantityButton}
-                        disabled={producto.cantidadPedida <= 1}
+                        disabled={producto.cantidadPedida <= 0}
                       >
                         <Minus size={14} />
                       </button>
@@ -1554,6 +1572,18 @@ const Pedidos: React.FC<PedidosProps> = ({
                 />
               </div>
               
+              {/* ✅ CAMPO COMENTARIO para especificar colores/variantes */}
+              <div style={{ marginBottom: '12px' }}>
+                <input
+                  type="text"
+                  placeholder="Comentario opcional (ej: 3 negro, 2 azul, 1 rojo)..."
+                  value={comentarioProducto}
+                  onChange={(e) => setComentarioProducto(e.target.value)}
+                  className={styles.input}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              
               {/* Resultados de búsqueda */}
               {productosEncontrados.length > 0 && (
                 <div style={{ 
@@ -1567,7 +1597,7 @@ const Pedidos: React.FC<PedidosProps> = ({
                     <div
                       key={producto.id}
                       onClick={() => {
-                        // Agregar producto al pedido seleccionado
+                        // ✅ Agregar producto al pedido con comentario
                         const nuevoProducto: Producto = {
                           id: `producto-${Date.now()}`,
                           codigo: producto.codigo_producto,
@@ -1575,7 +1605,8 @@ const Pedidos: React.FC<PedidosProps> = ({
                           cantidadPedida: cantidadAAgregar,
                           cantidadPreparada: 0,
                           estado: 'pendiente',
-                          precio: producto.precio_venta || 0
+                          precio: producto.precio_venta || 0,
+                          comentario: comentarioProducto // ✅ Incluir comentario para colores/variantes
                         };
 
                         const pedidoActualizado = {
@@ -1588,12 +1619,14 @@ const Pedidos: React.FC<PedidosProps> = ({
                         ));
                         setPedidoSeleccionado(pedidoActualizado);
                         
-                        // Limpiar búsqueda
+                        // ✅ Limpiar búsqueda y comentario
                         setBuscarProducto('');
                         setProductosEncontrados([]);
                         setCantidadAAgregar(1);
+                        setComentarioProducto('');
                         
-                        alert(`✅ ${producto.codigo_producto} agregado al pedido (${cantidadAAgregar} unidades)`);
+                        const mensajeComentario = comentarioProducto ? ` (${comentarioProducto})` : '';
+                        alert(`✅ ${producto.codigo_producto} agregado al pedido (${cantidadAAgregar} unidades)${mensajeComentario}`);
                       }}
                       style={{
                         padding: '10px',
