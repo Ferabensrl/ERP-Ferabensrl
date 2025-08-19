@@ -362,13 +362,9 @@ const ControlEjecutivo: React.FC = () => {
     }
   };
 
-  // ✅ CARGAR DATOS AL INICIAR
+  // ✅ CARGAR DATOS AL INICIAR (solo una vez)
   useEffect(() => {
     cargarPedidos();
-    
-    // Auto-refresh cada 30 segundos
-    const interval = setInterval(cargarPedidos, 30000);
-    return () => clearInterval(interval);
   }, []);
 
   // ✅ LOADING STATE

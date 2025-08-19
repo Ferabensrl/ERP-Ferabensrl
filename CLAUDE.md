@@ -249,6 +249,48 @@ git push            # Subir cambios
 5. **IA para predicción** de inventario
 6. **Sincronización offline** para áreas sin internet
 
+## 📝 FUNCIONALIDADES EN DESARROLLO PAUSADAS
+
+### **Edición de Pedidos (PAUSADO TEMPORALMENTE)**
+
+**🎯 Objetivo Original:**
+Permitir agregar productos y modificar cantidades a pedidos existentes cuando el cliente hace pedidos adicionales vía WhatsApp.
+
+**✅ Lo que se implementó y FUNCIONA:**
+- Botón "Editar" en vista detalle de pedidos
+- Modal de búsqueda para agregar productos nuevos
+- Edición de cantidades (incluyendo reducir a 0 para eliminar)
+- Campo de comentarios para especificar variantes (ej: "2 negros, 1 azul")
+- Botón para editar comentarios en productos existentes
+- Persistencia en Supabase con función `actualizarProductosPedido()`
+- Display de comentarios con emoji 💬 en lista de pedidos
+
+**⚠️ PROBLEMA IDENTIFICADO:**
+La integración con el flujo completo no está terminada:
+- Los productos editados y comentarios se guardan en Supabase correctamente
+- Pero cuando el operario de depósito entra a preparar el pedido, no ve los cambios
+- La función `iniciarPreparacion()` usa los datos originales en lugar de cargar desde Supabase
+
+**💡 ALTERNATIVA SUGERIDA (PARA IMPLEMENTAR):**
+En lugar de editar pedidos existentes, crear **pedidos complementarios:**
+- Cliente pide algo adicional → crear nuevo pedido del mismo cliente
+- En la vista de depósito, mostrar pedidos relacionados juntos
+- Al finalizar, se pueden facturar como una sola orden
+- Ventaja: No modifica el flujo existente que ya funciona perfectamente
+
+**🔧 CÓDIGO IMPLEMENTADO (MANTENIDO):**
+La funcionalidad actual NO interfiere con el sistema existente y puede mantenerse como está para uso futuro. Los archivos modificados:
+- `src/components/Pedidos/Pedidos.tsx`: Botones de edición y modal
+- `src/lib/supabaseClient.ts`: Función `actualizarProductosPedido()`
+
+**📋 PARA FUTURO DESARROLLO:**
+1. Opción A: Completar integración modificando `iniciarPreparacion()` para cargar datos de Supabase
+2. Opción B: Implementar sistema de "pedidos complementarios" 
+3. Opción C: Desarrollar workflow híbrido que permita ambas opciones
+
+**🚨 NOTA IMPORTANTE:**
+El sistema actual funciona perfectamente sin estas modificaciones. La funcionalidad de edición está aislada y solo se activa manualmente, no afecta el flujo normal de pedidos.
+
 ---
 
 **📞 Contacto Técnico:** Sistema desarrollado con Claude Code
