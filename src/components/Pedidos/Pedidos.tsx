@@ -1287,8 +1287,11 @@ const Pedidos: React.FC<PedidosProps> = ({
                   {/* ✅ NUEVO BOTÓN EDITAR - Solo agregado, no modifica nada existente */}
                   <button
                     onClick={() => {
+                      console.log('🔍 Botón Editar clickeado para pedido:', pedido.numero);
+                      console.log('📦 Pedido completo:', pedido);
                       setPedidoParaEditar(pedido);
                       setMostrarModalEditar(true);
+                      console.log('✅ Estados actualizados - Modal debería aparecer');
                     }}
                     className={styles.buttonSecondary}
                   >
@@ -2063,7 +2066,10 @@ const Pedidos: React.FC<PedidosProps> = ({
         )}
 
         {/* ✅ NUEVO MODAL EDITAR PEDIDO - Solo agregado, no modifica nada existente */}
-        {mostrarModalEditar && pedidoParaEditar && (
+        {mostrarModalEditar && pedidoParaEditar && (() => {
+          console.log('🎯 Renderizando modal editar. Estado:', { mostrarModalEditar, pedidoParaEditar: pedidoParaEditar?.numero });
+          return true;
+        })() && (
           <div className={styles.modalOverlay}>
             <div className={styles.modal} style={{ maxWidth: '800px', maxHeight: '80vh', overflow: 'auto' }}>
               <h3 style={{ marginBottom: '20px', color: '#1f2937' }}>
