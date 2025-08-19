@@ -1292,6 +1292,11 @@ const Pedidos: React.FC<PedidosProps> = ({
                     onClick={() => {
                       console.log('🔍 Botón Editar clickeado para pedido:', pedido.numero);
                       console.log('📦 Pedido completo:', pedido);
+                      
+                      // SOLUCIÓN TEMPORAL: Usar window para persistir
+                      (window as any).modalEditarData = pedido;
+                      (window as any).mostrarModalEditar = true;
+                      
                       setPedidoParaEditar(pedido);
                       setMostrarModalEditar(true);
                       console.log('✅ Estados actualizados - Modal debería aparecer');
@@ -2081,17 +2086,17 @@ const Pedidos: React.FC<PedidosProps> = ({
         )}
 
         {/* ✅ NUEVO MODAL EDITAR PEDIDO - Solo agregado, no modifica nada existente */}
-        {mostrarModalEditar && pedidoParaEditar && (
+        {((mostrarModalEditar && pedidoParaEditar) || ((window as any).mostrarModalEditar && (window as any).modalEditarData)) && (
           <div className={styles.modalOverlay}>
             <div className={styles.modal} style={{ maxWidth: '800px', maxHeight: '80vh', overflow: 'auto' }}>
               <h3 style={{ marginBottom: '20px', color: '#1f2937' }}>
-                ✏️ Editar Pedido: {pedidoParaEditar.numero}
-                {console.log('🎯 MODAL RENDERIZADO EXITOSAMENTE para:', pedidoParaEditar.numero)}
+                ✏️ Editar Pedido: {(pedidoParaEditar || (window as any).modalEditarData)?.numero}
+                {console.log('🎯 MODAL RENDERIZADO EXITOSAMENTE para:', (pedidoParaEditar || (window as any).modalEditarData)?.numero)}
               </h3>
               
               {/* Cliente info */}
               <div style={{ marginBottom: '20px', padding: '10px', backgroundColor: '#f3f4f6', borderRadius: '8px' }}>
-                <strong>👤 Cliente:</strong> {pedidoParaEditar.cliente.nombre}
+                <strong>👤 Cliente:</strong> {(pedidoParaEditar || (window as any).modalEditarData)?.cliente.nombre}
               </div>
 
               {/* Buscador de productos */}
