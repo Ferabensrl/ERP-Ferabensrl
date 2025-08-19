@@ -10,7 +10,9 @@ import {
   MessageSquare,
   Eye,
   User,
-  Trash2
+  Trash2,
+  Edit3,
+  Search
 } from 'lucide-react';
 import styles from './Pedidos.module.css';
 // ✅ ÚNICA ADICIÓN: Import de Supabase
@@ -302,6 +304,13 @@ const Pedidos: React.FC<PedidosProps> = ({
   const [nuevoProductoCantidad, setNuevoProductoCantidad] = useState(1);
   const [comentarios, setComentarios] = useState('');
 
+  // ✅ NUEVOS ESTADOS PARA EDITAR PEDIDOS (solo agregados, nada modificado)
+  const [mostrarModalEditar, setMostrarModalEditar] = useState(false);
+  const [pedidoParaEditar, setPedidoParaEditar] = useState<Pedido | null>(null);
+  const [buscarProducto, setBuscarProducto] = useState('');
+  const [productosEncontrados, setProductosEncontrados] = useState<any[]>([]);
+  const [cantidadAAgregar, setCantidadAAgregar] = useState(1);
+
   // ✅ FUNCIÓN EXACTAMENTE IGUAL (sin cambios)
   const handleAgregarProducto = () => {
     if (!nuevoProductoCodigo.trim() || !nuevoProductoNombre.trim() || nuevoProductoCantidad <= 0) {
@@ -434,6 +443,17 @@ const Pedidos: React.FC<PedidosProps> = ({
 
     cargarTodosLosPedidos();
   }, [pedidosWhatsApp]);
+
+  // ✅ NUEVO useEffect para búsqueda automática de productos
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (buscarProducto) {
+        buscarProductosEnInventario(buscarProducto);
+      }
+    }, 300); // Debounce de 300ms
+
+    return () => clearTimeout(timer);
+  }, [buscarProducto]);
 
   // ✅ TODAS LAS FUNCIONES SIGUIENTES EXACTAMENTE IGUALES (sin cambios)
   
@@ -985,6 +1005,99 @@ const Pedidos: React.FC<PedidosProps> = ({
     }
   };
 
+  // ✅ NUEVAS FUNCIONES PARA EDITAR PEDIDOS - Solo agregadas, no modifican nada existente
+  const buscarProductosEnInventario = async (codigo: string) => {
+    if (!codigo.trim()) {
+      setProductosEncontrados([]);
+      return;
+    }
+
+    try {
+      console.log('🔍 Buscando productos con código:', codigo);
+      const { data, error } = await supabase
+        .from('inventario')
+        .select('*')
+        .ilike('codigo_producto', `%${codigo}%`)
+        .eq('activo', true)
+        .limit(10);
+
+      if (error) throw error;
+
+      console.log('📦 Productos encontrados:', data);
+      setProductosEncontrados(data || []);
+    } catch (error) {
+      console.error('❌ Error buscando productos:', error);
+      setProductosEncontrados([]);
+    }
+  };
+
+  const agregarProductoAPedido = (productoInventario: any) => {
+    if (!pedidoParaEditar) return;
+
+    const nuevoProducto: Producto = {
+      id: `producto-${Date.now()}`,
+      codigo: productoInventario.codigo_producto,
+      nombre: productoInventario.nombre || 'Producto sin nombre',
+      cantidadPedida: cantidadAAgregar,
+      cantidadPreparada: 0,
+      estado: 'pendiente',
+      precio: productoInventario.precio_venta || 0
+    };
+
+    // Actualizar el pedido seleccionado
+    const pedidoActualizado = {
+      ...pedidoParaEditar,
+      productos: [...pedidoParaEditar.productos, nuevoProducto]
+    };
+
+    // Actualizar en la lista de pedidos
+    setPedidos(prev => prev.map(p => 
+      p.id === pedidoParaEditar.id ? pedidoActualizado : p
+    ));
+
+    setPedidoParaEditar(pedidoActualizado);
+    
+    // Limpiar búsqueda
+    setBuscarProducto('');
+    setProductosEncontrados([]);
+    setCantidadAAgregar(1);
+
+    alert(`✅ Producto agregado: ${productoInventario.codigo_producto} x${cantidadAAgregar}`);
+  };
+
+  const eliminarProductoDePedido = (productoId: string) => {
+    if (!pedidoParaEditar) return;
+
+    const pedidoActualizado = {
+      ...pedidoParaEditar,
+      productos: pedidoParaEditar.productos.filter(p => p.id !== productoId)
+    };
+
+    setPedidos(prev => prev.map(p => 
+      p.id === pedidoParaEditar.id ? pedidoActualizado : p
+    ));
+
+    setPedidoParaEditar(pedidoActualizado);
+    alert('✅ Producto eliminado del pedido');
+  };
+
+  const modificarCantidadProducto = (productoId: string, nuevaCantidad: number) => {
+    if (!pedidoParaEditar || nuevaCantidad < 0) return;
+
+    const pedidoActualizado = {
+      ...pedidoParaEditar,
+      productos: pedidoParaEditar.productos.map(p => 
+        p.id === productoId ? { ...p, cantidadPedida: nuevaCantidad } : p
+      )
+    };
+
+    setPedidos(prev => prev.map(p => 
+      p.id === pedidoParaEditar.id ? pedidoActualizado : p
+    ));
+
+    setPedidoParaEditar(pedidoActualizado);
+  };
+
   // ✅ NUEVA FUNCIÓN: Manejar salida del depósito con confirmación (EXACTAMENTE IGUAL)
   const salirDelDeposito = () => {
     if (hayProgresoPorGuardar()) {
@@ -1169,6 +1282,18 @@ const Pedidos: React.FC<PedidosProps> = ({
                   >
                     <Eye size={16} />
                     Ver Detalle
+                  </button>
+
+                  {/* ✅ NUEVO BOTÓN EDITAR - Solo agregado, no modifica nada existente */}
+                  <button
+                    onClick={() => {
+                      setPedidoParaEditar(pedido);
+                      setMostrarModalEditar(true);
+                    }}
+                    className={styles.buttonSecondary}
+                  >
+                    <Edit3 size={16} />
+                    Editar
                   </button>
 
                   {pedido.estado === 'pendiente' && (
@@ -1931,6 +2056,157 @@ const Pedidos: React.FC<PedidosProps> = ({
                   style={{flex: 1}}
                 >
                   Agregar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ✅ NUEVO MODAL EDITAR PEDIDO - Solo agregado, no modifica nada existente */}
+        {mostrarModalEditar && pedidoParaEditar && (
+          <div className={styles.modalOverlay}>
+            <div className={styles.modal} style={{ maxWidth: '800px', maxHeight: '80vh', overflow: 'auto' }}>
+              <h3 style={{ marginBottom: '20px', color: '#1f2937' }}>
+                ✏️ Editar Pedido: {pedidoParaEditar.numero}
+              </h3>
+              
+              {/* Cliente info */}
+              <div style={{ marginBottom: '20px', padding: '10px', backgroundColor: '#f3f4f6', borderRadius: '8px' }}>
+                <strong>👤 Cliente:</strong> {pedidoParaEditar.cliente.nombre}
+              </div>
+
+              {/* Buscador de productos */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+                  🔍 Buscar producto en inventario:
+                </label>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    placeholder="Ingresa código del producto..."
+                    value={buscarProducto}
+                    onChange={(e) => setBuscarProducto(e.target.value)}
+                    className={styles.input}
+                    style={{ flex: 1 }}
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    value={cantidadAAgregar}
+                    onChange={(e) => setCantidadAAgregar(Number(e.target.value))}
+                    className={styles.input}
+                    style={{ width: '80px' }}
+                    placeholder="Cant."
+                  />
+                </div>
+                
+                {/* Resultados de búsqueda */}
+                {productosEncontrados.length > 0 && (
+                  <div style={{ marginTop: '10px', border: '1px solid #d1d5db', borderRadius: '8px', backgroundColor: 'white' }}>
+                    {productosEncontrados.map((producto) => (
+                      <div
+                        key={producto.id}
+                        onClick={() => agregarProductoAPedido(producto)}
+                        style={{
+                          padding: '10px',
+                          borderBottom: '1px solid #e5e7eb',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                      >
+                        <div>
+                          <strong>{producto.codigo_producto}</strong>
+                          <div style={{ fontSize: '14px', color: '#6b7280' }}>{producto.nombre}</div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div>${producto.precio_venta}</div>
+                          <div style={{ fontSize: '12px', color: '#10b981' }}>Click para agregar</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Lista actual de productos */}
+              <div style={{ marginBottom: '20px' }}>
+                <h4 style={{ marginBottom: '10px' }}>📦 Productos en el pedido:</h4>
+                {pedidoParaEditar.productos.length === 0 ? (
+                  <p style={{ color: '#6b7280', fontStyle: 'italic' }}>No hay productos en este pedido</p>
+                ) : (
+                  <div style={{ maxHeight: '300px', overflow: 'auto' }}>
+                    {pedidoParaEditar.productos.map((producto) => (
+                      <div
+                        key={producto.id}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '10px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          marginBottom: '8px',
+                          backgroundColor: '#f9fafb'
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <strong>{producto.codigo}</strong> - {producto.nombre}
+                          <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                            ${producto.precio?.toLocaleString() || 'Sin precio'}
+                          </div>
+                        </div>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <button
+                            onClick={() => modificarCantidadProducto(producto.id, producto.cantidadPedida - 1)}
+                            className={styles.quantityButton}
+                            disabled={producto.cantidadPedida <= 1}
+                          >
+                            <Minus size={16} />
+                          </button>
+                          
+                          <span style={{ minWidth: '40px', textAlign: 'center', fontWeight: 'bold' }}>
+                            {producto.cantidadPedida}
+                          </span>
+                          
+                          <button
+                            onClick={() => modificarCantidadProducto(producto.id, producto.cantidadPedida + 1)}
+                            className={styles.quantityButton}
+                          >
+                            <Plus size={16} />
+                          </button>
+                          
+                          <button
+                            onClick={() => eliminarProductoDePedido(producto.id)}
+                            className={styles.buttonDanger}
+                            style={{ marginLeft: '10px' }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Botones del modal */}
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => {
+                    setMostrarModalEditar(false);
+                    setPedidoParaEditar(null);
+                    setBuscarProducto('');
+                    setProductosEncontrados([]);
+                    setCantidadAAgregar(1);
+                  }}
+                  className={styles.buttonSecondary}
+                >
+                  Cerrar
                 </button>
               </div>
             </div>
