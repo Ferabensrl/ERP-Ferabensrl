@@ -1301,9 +1301,6 @@ const Pedidos: React.FC<PedidosProps> = ({
                       setMostrarModalEditar(true);
                       console.log('✅ Estados actualizados - Modal debería aparecer');
                       
-                      // PRUEBA TEMPORAL: Forzar apertura 
-                      alert(`Modal debería abrirse para: ${pedido.numero}`);
-                      
                       // Debug adicional después de un momento
                       setTimeout(() => {
                         console.log('🔍 Estado actual después de 100ms:', {
@@ -2222,11 +2219,14 @@ const Pedidos: React.FC<PedidosProps> = ({
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <button
                   onClick={() => {
+                    // Limpiar tanto estados como window
                     setMostrarModalEditar(false);
                     setPedidoParaEditar(null);
                     setBuscarProducto('');
                     setProductosEncontrados([]);
                     setCantidadAAgregar(1);
+                    (window as any).mostrarModalEditar = false;
+                    (window as any).modalEditarData = null;
                   }}
                   className={styles.buttonSecondary}
                 >
