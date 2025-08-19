@@ -1357,6 +1357,15 @@ const Pedidos: React.FC<PedidosProps> = ({
             <ArrowLeft size={16} />
             Volver
           </button>
+          
+          {/* ✅ BOTÓN EDITAR SEGURO - En vista detalle estable */}
+          <button
+            onClick={() => setModoEdicion(!modoEdicion)}
+            className={modoEdicion ? styles.buttonDanger : styles.buttonPrimary}
+          >
+            <Edit3 size={16} />
+            {modoEdicion ? 'Cancelar Edición' : 'Editar Pedido'}
+          </button>
 
           <div>
             <h2 className={styles.pageTitle} style={{fontSize: '24px', marginBottom: 0}}>
@@ -1409,9 +1418,84 @@ const Pedidos: React.FC<PedidosProps> = ({
                 </div>
 
                 <div style={{ textAlign: 'right' }}>
-                  <p><strong>{producto.cantidadPedida}</strong> unidades</p>
-                  {producto.precio && (
-                    <p>${producto.precio.toLocaleString()} c/u</p>
+                  {modoEdicion ? (
+                    // ✅ MODO EDICIÓN: Botones para modificar cantidad
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={() => {
+                          // Modificar cantidad del producto
+                          const nuevaCantidad = producto.cantidadPedida - 1;
+                          if (nuevaCantidad > 0) {
+                            const pedidoActualizado = {
+                              ...pedidoSeleccionado,
+                              productos: pedidoSeleccionado.productos.map(p => 
+                                p.id === producto.id ? { ...p, cantidadPedida: nuevaCantidad } : p
+                              )
+                            };
+                            setPedidos(prev => prev.map(p => 
+                              p.id === pedidoSeleccionado.id ? pedidoActualizado : p
+                            ));
+                            setPedidoSeleccionado(pedidoActualizado);
+                          }
+                        }}
+                        className={styles.quantityButton}
+                        disabled={producto.cantidadPedida <= 1}
+                      >
+                        <Minus size={14} />
+                      </button>
+                      
+                      <span style={{ minWidth: '30px', textAlign: 'center', fontWeight: 'bold' }}>
+                        {producto.cantidadPedida}
+                      </span>
+                      
+                      <button
+                        onClick={() => {
+                          // Modificar cantidad del producto
+                          const nuevaCantidad = producto.cantidadPedida + 1;
+                          const pedidoActualizado = {
+                            ...pedidoSeleccionado,
+                            productos: pedidoSeleccionado.productos.map(p => 
+                              p.id === producto.id ? { ...p, cantidadPedida: nuevaCantidad } : p
+                            )
+                          };
+                          setPedidos(prev => prev.map(p => 
+                            p.id === pedidoSeleccionado.id ? pedidoActualizado : p
+                          ));
+                          setPedidoSeleccionado(pedidoActualizado);
+                        }}
+                        className={styles.quantityButton}
+                      >
+                        <Plus size={14} />
+                      </button>
+                      
+                      <button
+                        onClick={() => {
+                          // Eliminar producto del pedido
+                          if (confirm(`¿Eliminar ${producto.nombre} del pedido?`)) {
+                            const pedidoActualizado = {
+                              ...pedidoSeleccionado,
+                              productos: pedidoSeleccionado.productos.filter(p => p.id !== producto.id)
+                            };
+                            setPedidos(prev => prev.map(p => 
+                              p.id === pedidoSeleccionado.id ? pedidoActualizado : p
+                            ));
+                            setPedidoSeleccionado(pedidoActualizado);
+                          }
+                        }}
+                        className={styles.buttonDanger}
+                        style={{ marginLeft: '8px', padding: '4px' }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    // ✅ MODO NORMAL: Solo mostrar info
+                    <>
+                      <p><strong>{producto.cantidadPedida}</strong> unidades</p>
+                      {producto.precio && (
+                        <p>${producto.precio.toLocaleString()} c/u</p>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -1436,6 +1520,106 @@ const Pedidos: React.FC<PedidosProps> = ({
               )}
             </div>
           ))}
+
+          {/* ✅ BUSCADOR DE PRODUCTOS - Solo en modo edición */}
+          {modoEdicion && (
+            <div style={{ 
+              marginTop: '20px', 
+              padding: '16px', 
+              border: '2px dashed #e5e7eb', 
+              borderRadius: '8px',
+              backgroundColor: '#f9fafb'
+            }}>
+              <h4 style={{ margin: '0 0 12px 0', color: '#374151' }}>
+                ➕ Agregar Producto al Pedido
+              </h4>
+              
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '12px' }}>
+                <input
+                  type="text"
+                  placeholder="Buscar por código de producto..."
+                  value={buscarProducto}
+                  onChange={(e) => setBuscarProducto(e.target.value)}
+                  className={styles.input}
+                  style={{ flex: 1 }}
+                />
+                <input
+                  type="number"
+                  min="1"
+                  value={cantidadAAgregar}
+                  onChange={(e) => setCantidadAAgregar(Number(e.target.value))}
+                  className={styles.input}
+                  style={{ width: '70px' }}
+                  placeholder="Cant."
+                />
+              </div>
+              
+              {/* Resultados de búsqueda */}
+              {productosEncontrados.length > 0 && (
+                <div style={{ 
+                  border: '1px solid #d1d5db', 
+                  borderRadius: '6px', 
+                  backgroundColor: 'white',
+                  maxHeight: '200px',
+                  overflow: 'auto'
+                }}>
+                  {productosEncontrados.map((producto) => (
+                    <div
+                      key={producto.id}
+                      onClick={() => {
+                        // Agregar producto al pedido seleccionado
+                        const nuevoProducto: Producto = {
+                          id: `producto-${Date.now()}`,
+                          codigo: producto.codigo_producto,
+                          nombre: producto.nombre || 'Sin nombre',
+                          cantidadPedida: cantidadAAgregar,
+                          cantidadPreparada: 0,
+                          estado: 'pendiente',
+                          precio: producto.precio_venta || 0
+                        };
+
+                        const pedidoActualizado = {
+                          ...pedidoSeleccionado,
+                          productos: [...pedidoSeleccionado.productos, nuevoProducto]
+                        };
+
+                        setPedidos(prev => prev.map(p => 
+                          p.id === pedidoSeleccionado.id ? pedidoActualizado : p
+                        ));
+                        setPedidoSeleccionado(pedidoActualizado);
+                        
+                        // Limpiar búsqueda
+                        setBuscarProducto('');
+                        setProductosEncontrados([]);
+                        setCantidadAAgregar(1);
+                        
+                        alert(`✅ ${producto.codigo_producto} agregado al pedido (${cantidadAAgregar} unidades)`);
+                      }}
+                      style={{
+                        padding: '10px',
+                        borderBottom: '1px solid #e5e7eb',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                    >
+                      <div>
+                        <strong>{producto.codigo_producto}</strong>
+                        <div style={{ fontSize: '14px', color: '#6b7280' }}>{producto.nombre}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontWeight: 'bold' }}>${producto.precio_venta}</div>
+                        <div style={{ fontSize: '12px', color: '#10b981' }}>Click para agregar</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {pedidoSeleccionado.total && (
             <div className={styles.totalSection}>
