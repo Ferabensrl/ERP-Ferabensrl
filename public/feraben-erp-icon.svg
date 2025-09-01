@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Fondo circular con colores corporativos -->
+  <circle cx="50" cy="50" r="45" fill="#2563EB" stroke="#1E40AF" stroke-width="3"/>
+  
+  <!-- Letra F estilizada -->
+  <path d="M25 70 L25 30 L45 30 M25 45 L40 45 M25 55 L38 55" 
+        fill="none" stroke="#F8FAFC" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Elemento ERP (gráfico de barras) -->
+  <rect x="55" y="50" width="5" height="20" fill="#F8FAFC" rx="1"/>
+  <rect x="62" y="45" width="5" height="25" fill="#F8FAFC" rx="1"/>
+  <rect x="69" y="40" width="5" height="30" fill="#F8FAFC" rx="1"/>
+  
+  <!-- Puntos decorativos -->
+  <circle cx="30" cy="25" r="2" fill="#F8FAFC"/>
+  <circle cx="70" cy="25" r="2" fill="#F8FAFC"/>
+  
+  <!-- Línea decorativa inferior -->
+  <path d="M20 75 Q50 80 80 75" 
+        fill="none" stroke="#F8FAFC" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Iniciales pequeñas ERP -->
+  <text x="50" y="85" text-anchor="middle" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="8" font-weight="bold">ERP</text>
+</svg>
