@@ -120,7 +120,6 @@ const Inventario: React.FC = () => {
       const { data, error: supabaseError } = await supabase
         .from('inventario')
         .select('*')
-        .eq('activo', true)
         .order('codigo_producto');
       
       if (supabaseError) {
@@ -160,8 +159,8 @@ const Inventario: React.FC = () => {
   const totalProductos = productos.length;
   const stockBajo = productos.filter(p => p.stock <= (p.stock_minimo || 0)).length;
   const valorInventario = productos.reduce((sum, p) => sum + (p.precio_venta * p.stock), 0);
-  const productosActivos = productos.filter(p => p.estado === 'activo' || !p.estado).length;
-  const productosInactivos = productos.filter(p => p.estado === 'inactivo').length;
+  const productosActivos = productos.filter(p => p.activo === true || p.activo === undefined).length;
+  const productosInactivos = productos.filter(p => p.activo === false).length;
 
   // FUNCIONES DE SELECCIÓN MÚLTIPLE
   const toggleSeleccion = (id: number) => {
@@ -254,7 +253,8 @@ const Inventario: React.FC = () => {
       precio_venta: producto.precio_venta,
       precio_costo: producto.precio_costo || 0,
       codigo_barras: producto.codigo_barras || '',
-      stock_minimo: producto.stock_minimo || 0
+      stock_minimo: producto.stock_minimo || 0,
+      activo: producto.activo !== false // Por defecto true si no está definido
     });
   };
 
@@ -281,6 +281,7 @@ const Inventario: React.FC = () => {
           precio_costo: datosEdicion.precio_costo,
           codigo_barras: datosEdicion.codigo_barras,
           stock_minimo: datosEdicion.stock_minimo,
+          activo: datosEdicion.activo, // ✅ NUEVO: Permitir cambiar estado activo/inactivo
           updated_at: new Date().toISOString()
         })
         .eq('id', productoEditando);
@@ -1266,7 +1267,55 @@ El archivo se ha descargado y está listo para enviar a tu cliente.`);
                           )}
                         </div>
                       </div>
-                      
+
+                      {/* ✅ NUEVO: ESTADO ACTIVO/INACTIVO */}
+                      {productoEditando === producto.id && (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '12px',
+                          backgroundColor: '#f8fafc',
+                          borderRadius: '8px',
+                          marginBottom: '16px',
+                          border: '1px solid #e2e8f0'
+                        }}>
+                          <div>
+                            <span style={{
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              color: '#374151'
+                            }}>
+                              Estado del Producto:
+                            </span>
+                            <div style={{
+                              fontSize: '12px',
+                              color: '#6b7280',
+                              marginTop: '2px'
+                            }}>
+                              {datosEdicion.activo ? 'Visible en inventario y ventas' : 'Oculto de inventario y ventas'}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => actualizarDatoEdicion('activo', !datosEdicion.activo)}
+                            style={{
+                              padding: '8px 16px',
+                              borderRadius: '20px',
+                              border: 'none',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              backgroundColor: datosEdicion.activo ? '#10b981' : '#ef4444',
+                              color: 'white',
+                              minWidth: '100px'
+                            }}
+                          >
+                            {datosEdicion.activo ? '✓ Activo' : '✗ Inactivo'}
+                          </button>
+                        </div>
+                      )}
+
                       {/* ✅ BOTÓN EDITAR EN MÓVIL */}
                       <div style={{
                         display: 'flex',
