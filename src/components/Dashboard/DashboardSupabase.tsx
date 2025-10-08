@@ -185,31 +185,32 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
         }
 
         // 💰 RENTABILIDAD: Productos con mejor margen bruto
-        console.log('🔍 DEBUG - Total productos activos:', productosActivos.length)
-        console.log('🔍 DEBUG - Muestra primeros 3 productos:', productosActivos.slice(0, 3))
-        
-        const productosConCosto = productosActivos.filter(p => 
+        // console.log('🔍 DEBUG - Total productos activos:', productosActivos.length)
+        // console.log('🔍 DEBUG - Muestra primeros 3 productos:', productosActivos.slice(0, 3))
+
+        const productosConCosto = productosActivos.filter(p =>
           p.precio_costo != null && p.precio_costo > 0 && p.precio_venta > 0
         )
-        
-        console.log('🔍 DEBUG - Productos con costo > 0:', productosConCosto.length)
-        console.log('🔍 DEBUG - Muestra primeros 3 con costo:', productosConCosto.slice(0, 3))
-        
+
+        // console.log('🔍 DEBUG - Productos con costo > 0:', productosConCosto.length)
+        // console.log('🔍 DEBUG - Muestra primeros 3 con costo:', productosConCosto.slice(0, 3))
+
         const productosRentables = productosConCosto
           .map(p => {
             const precioVenta = p.precio_venta || 0
             const precioCostoUSD = p.precio_costo || 0
             const precioCostoBrutoUYU = precioCostoUSD * tipoCambio // 💱 Solo tipo de cambio
             const precioCostoNetoUYU = precioCostoBrutoUYU * factorImportacion // 📦 + Costos importación
-            
+
             const margenBruto = precioVenta - precioCostoBrutoUYU
             const margenNeto = precioVenta - precioCostoNetoUYU
-            
+
             const porcentajeGananciaBruto = precioCostoBrutoUYU > 0 ? ((margenBruto / precioCostoBrutoUYU) * 100) : 0
             const porcentajeGananciaNeto = precioCostoNetoUYU > 0 ? ((margenNeto / precioCostoNetoUYU) * 100) : 0
-            
-            console.log(`🔍 DEBUG - Producto ${p.codigo_producto}: venta=$${precioVenta} UYU, costo China=$${precioCostoUSD} USD, bruto=$${precioCostoBrutoUYU.toFixed(2)} UYU, neto=$${precioCostoNetoUYU.toFixed(2)} UYU, ganancia bruta=${porcentajeGananciaBruto.toFixed(1)}%, ganancia neta=${porcentajeGananciaNeto.toFixed(1)}%`)
-            
+
+            // 🔇 DEBUG comentado para producción - genera 300+ líneas en consola
+            // console.log(`🔍 DEBUG - Producto ${p.codigo_producto}: venta=$${precioVenta} UYU, costo China=$${precioCostoUSD} USD, bruto=$${precioCostoBrutoUYU.toFixed(2)} UYU, neto=$${precioCostoNetoUYU.toFixed(2)} UYU, ganancia bruta=${porcentajeGananciaBruto.toFixed(1)}%, ganancia neta=${porcentajeGananciaNeto.toFixed(1)}%`)
+
             return {
               codigo_producto: p.codigo_producto,
               descripcion: p.descripcion,
@@ -226,7 +227,7 @@ const DashboardSupabase: React.FC<DashboardSupabaseProps> = ({ onNavigate }) => 
           .sort((a, b) => b.porcentaje_ganancia_neto - a.porcentaje_ganancia_neto)
           .slice(0, 10)
 
-        console.log('💰 Top productos rentables:', productosRentables)
+        // console.log('💰 Top productos rentables:', productosRentables)
 
         // 📅 TENDENCIAS: Ventas por mes desde pedidos
         const { data: pedidos, error: pedidosMainError } = await supabase
