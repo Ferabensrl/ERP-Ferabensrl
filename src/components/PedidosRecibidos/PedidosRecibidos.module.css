@@ -1,0 +1,643 @@
+/* ============================================
+   PEDIDOS RECIBIDOS - ESTILOS MODERNOS
+   ============================================ */
+
+.container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #E3D4C1 0%, #F0E6D6 100%);
+  padding: 2rem;
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.header h2 {
+  font-size: 2rem;
+  color: #8F6A50;
+  margin: 0;
+}
+
+.btnBack {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background-color: #8F6A50;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btnBack:hover {
+  background-color: #6d5240;
+  transform: translateY(-1px);
+}
+
+/* ============================================
+   BÚSQUEDA
+   ============================================ */
+
+.searchBar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: white;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.75rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 8px rgba(143, 106, 80, 0.1);
+}
+
+.searchBar input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  color: #8F6A50;
+}
+
+.searchBar input::placeholder {
+  color: #c4a990;
+}
+
+/* ============================================
+   INFO BOX
+   ============================================ */
+
+.infoBox {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.infoBox p {
+  margin: 0;
+  color: #856404;
+  font-size: 0.95rem;
+}
+
+/* ============================================
+   LISTA DE PEDIDOS
+   ============================================ */
+
+.pedidosList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.pedidoCard {
+  background: white;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(143, 106, 80, 0.1);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pedidoCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(143, 106, 80, 0.15);
+}
+
+.pedidoCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #E3D4C1;
+}
+
+.pedidoCardHeader h3 {
+  margin: 0;
+  color: #8F6A50;
+  font-size: 1.25rem;
+}
+
+.badge {
+  padding: 0.375rem 0.75rem;
+  background-color: #28a745;
+  color: white;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.pedidoCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.pedidoInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #8F6A50;
+  font-size: 0.95rem;
+}
+
+.total {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #28a745;
+}
+
+.pedidoCardFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 1rem;
+  border-top: 1px solid #E3D4C1;
+}
+
+.fecha {
+  font-size: 0.85rem;
+  color: #999;
+}
+
+.btnVer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #8F6A50;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.btnVer:hover {
+  background-color: #6d5240;
+}
+
+/* ============================================
+   EMPTY STATE
+   ============================================ */
+
+.emptyState {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 4px 12px rgba(143, 106, 80, 0.1);
+}
+
+.emptyState svg {
+  color: #c4a990;
+  margin-bottom: 1rem;
+}
+
+.emptyState h3 {
+  color: #8F6A50;
+  margin: 0.5rem 0;
+}
+
+.emptyState p {
+  color: #999;
+  margin: 0;
+}
+
+/* ============================================
+   DETALLE DE PEDIDO
+   ============================================ */
+
+.pedidoDetalle {
+  background: white;
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(143, 106, 80, 0.1);
+}
+
+.infoSection {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 2px solid #E3D4C1;
+}
+
+.infoItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.infoItem svg {
+  color: #8F6A50;
+}
+
+.infoLabel {
+  font-weight: 600;
+  color: #8F6A50;
+  margin-right: 0.5rem;
+}
+
+.infoValue {
+  color: #555;
+}
+
+/* ============================================
+   PRODUCTOS
+   ============================================ */
+
+.productosSection {
+  margin-bottom: 2rem;
+}
+
+.productosHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.productosHeader h3 {
+  color: #8F6A50;
+  margin: 0;
+}
+
+.btnEdit {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #ffc107;
+  color: #856404;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btnEdit:hover {
+  background-color: #e0a800;
+}
+
+.productoCard {
+  background: #f8f9fa;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  border: 1px solid #E3D4C1;
+}
+
+.productoHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.productoHeader h4 {
+  margin: 0 0 0.25rem 0;
+  color: #8F6A50;
+  font-size: 1.1rem;
+}
+
+.productoCategoria {
+  font-size: 0.85rem;
+  color: #999;
+  margin: 0.25rem 0;
+}
+
+.productoPrecio {
+  font-size: 0.9rem;
+  color: #28a745;
+  font-weight: 600;
+  margin: 0.25rem 0;
+}
+
+.btnDeleteProducto {
+  padding: 0.5rem;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btnDeleteProducto:hover {
+  background-color: #c82333;
+}
+
+.variantes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.varianteRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 0.5rem;
+}
+
+.varianteColor {
+  font-weight: 600;
+  color: #8F6A50;
+  min-width: 100px;
+}
+
+.varianteCantidad {
+  color: #555;
+  font-weight: 500;
+}
+
+.quantityControls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quantityControls button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background-color: #8F6A50;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.quantityControls button:hover {
+  background-color: #6d5240;
+}
+
+.quantityInput {
+  width: 70px;
+  text-align: center;
+  padding: 0.5rem;
+  border: 1px solid #E3D4C1;
+  border-radius: 0.375rem;
+  font-size: 1rem;
+  color: #8F6A50;
+}
+
+.btnDeleteVariante {
+  padding: 0.375rem;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btnDeleteVariante:hover {
+  background-color: #c82333;
+}
+
+.surtidoRow {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: #fff3cd;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  color: #856404;
+}
+
+.comentarioProducto {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: #d1ecf1;
+  border-radius: 0.5rem;
+  color: #0c5460;
+  font-size: 0.9rem;
+}
+
+.comentarioFinal {
+  margin-bottom: 2rem;
+  padding: 1.25rem;
+  background: #f8f9fa;
+  border-left: 4px solid #8F6A50;
+  border-radius: 0.5rem;
+}
+
+.comentarioFinal strong {
+  color: #8F6A50;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.comentarioFinal p {
+  margin: 0;
+  color: #555;
+}
+
+.totalSection {
+  text-align: right;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: #e8f5e9;
+  border-radius: 0.75rem;
+}
+
+.totalSection h3 {
+  margin: 0;
+  color: #28a745;
+  font-size: 1.75rem;
+}
+
+/* ============================================
+   BOTONES DE ACCIÓN
+   ============================================ */
+
+.actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.btnAprobar,
+.btnRechazar,
+.btnGuardar,
+.btnCancelar {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border: none;
+  border-radius: 0.75rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btnAprobar {
+  background-color: #28a745;
+  color: white;
+}
+
+.btnAprobar:hover {
+  background-color: #218838;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.btnAprobar:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btnRechazar {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btnRechazar:hover {
+  background-color: #c82333;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.btnRechazar:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btnGuardar {
+  background-color: #007bff;
+  color: white;
+}
+
+.btnGuardar:hover {
+  background-color: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.btnCancelar {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btnCancelar:hover {
+  background-color: #5a6268;
+}
+
+/* ============================================
+   ESTADOS ESPECIALES
+   ============================================ */
+
+.loading,
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+}
+
+.loadingIcon {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  color: #8F6A50;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.error svg {
+  color: #dc3545;
+  margin-bottom: 1rem;
+}
+
+.error p {
+  color: #555;
+  margin-bottom: 1.5rem;
+}
+
+.btnRetry {
+  padding: 0.75rem 1.5rem;
+  background-color: #8F6A50;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btnRetry:hover {
+  background-color: #6d5240;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .header h2 {
+    font-size: 1.5rem;
+  }
+
+  .pedidosList {
+    grid-template-columns: 1fr;
+  }
+
+  .infoSection {
+    grid-template-columns: 1fr;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .btnAprobar,
+  .btnRechazar,
+  .btnGuardar,
+  .btnCancelar {
+    width: 100%;
+    min-width: unset;
+  }
+}

@@ -150,7 +150,14 @@ export const productosService = {
       // Buscar el producto por código
       const producto = await this.getByCodigo(codigoProducto);
       if (!producto) {
-        throw new Error(`Producto con código ${codigoProducto} no encontrado`);
+        // ⚠️ Producto no está en inventario (probablemente viene del catálogo)
+        // No es un error - simplemente continuamos sin reducir stock
+        console.warn(`⚠️ Producto ${codigoProducto} no está en inventario - continuando sin reducir stock (producto del catálogo)`);
+        return {
+          success: false,
+          stockAnterior: 0,
+          stockNuevo: 0
+        };
       }
 
       const stockAnterior = producto.stock;
@@ -192,10 +199,20 @@ export const productosService = {
           
           if (cantidadTotalPreparada > 0) {
             const resultado = await this.reducirStock(producto.codigo, cantidadTotalPreparada);
-            resultados.push({
-              codigo: producto.codigo,
-              resultado: `✅ ${resultado.stockAnterior} → ${resultado.stockNuevo} (-${cantidadTotalPreparada})`
-            });
+
+            if (resultado.success) {
+              // ✅ Producto está en inventario - stock reducido correctamente
+              resultados.push({
+                codigo: producto.codigo,
+                resultado: `✅ ${resultado.stockAnterior} → ${resultado.stockNuevo} (-${cantidadTotalPreparada})`
+              });
+            } else {
+              // ⚠️ Producto NO está en inventario (viene del catálogo)
+              resultados.push({
+                codigo: producto.codigo,
+                resultado: `⚠️ Producto del catálogo (sin inventario) - facturación OK`
+              });
+            }
           } else {
             resultados.push({
               codigo: producto.codigo,
@@ -560,6 +577,93 @@ export const pedidosService = {
     }
   }
 }
+
+// ===== SERVICIO DE PEDIDOS RECIBIDOS (del Catálogo) =====
+export const pedidosRecibidosService = {
+  // Obtener todos los pedidos recibidos pendientes
+  async getAll() {
+    try {
+      const { data, error } = await supabase
+        .from('pedidos_recibidos')
+        .select('*')
+        .eq('estado', 'recibido')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error obteniendo pedidos recibidos:', error);
+      throw error;
+    }
+  },
+
+  // Aprobar pedido y mover a producción
+  async aprobar(pedidoRecibidoId: number) {
+    try {
+      const { data, error } = await supabase
+        .rpc('aprobar_pedido_recibido', { pedido_recibido_id: pedidoRecibidoId });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error aprobando pedido:', error);
+      throw error;
+    }
+  },
+
+  // Rechazar pedido
+  async rechazar(pedidoRecibidoId: number, motivo: string) {
+    try {
+      const { error } = await supabase
+        .from('pedidos_recibidos')
+        .update({
+          estado: 'rechazado',
+          comentario_rechazo: motivo,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', pedidoRecibidoId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error rechazando pedido:', error);
+      throw error;
+    }
+  },
+
+  // Actualizar pedido recibido
+  async actualizar(pedidoRecibidoId: number, productos: any, total: number) {
+    try {
+      const { error } = await supabase
+        .from('pedidos_recibidos')
+        .update({
+          productos,
+          total,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', pedidoRecibidoId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error actualizando pedido recibido:', error);
+      throw error;
+    }
+  },
+
+  // Importar desde JSON (PDF)
+  async importarDesdeJSON(pedidoJSON: any) {
+    try {
+      const { data, error } = await supabase
+        .rpc('importar_pedido_desde_json', { pedido_json: pedidoJSON });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error importando pedido desde JSON:', error);
+      throw error;
+    }
+  }
+};
+
 // PARTE 6/8 - UTILIDADES
 
 // ===== UTILIDADES =====
@@ -755,6 +859,7 @@ export default {
   supabase,
   productosService,
   pedidosService,
+  pedidosRecibidosService,
   utils,
   testFunctions,
   maintenance

@@ -207,21 +207,30 @@ const Facturacion: React.FC<FacturacionProps> = ({
       const idsYaProcesados = new Set<string>();
       const pedidosUnicos: any[] = [];
 
-      // Primero agregar pedidos de Supabase
+      // ✅ SOLO agregar pedidos de Supabase (fuente única de verdad)
       pedidosDeSupabase.forEach(pedido => {
-        if (pedido && pedido.id && !idsYaProcesados.has(pedido.id)) {
-          idsYaProcesados.add(pedido.id);
+        const idNormalizado = String(pedido.id); // Normalizar a string
+        if (pedido && pedido.id && !idsYaProcesados.has(idNormalizado)) {
+          idsYaProcesados.add(idNormalizado);
           pedidosUnicos.push(pedido);
         }
       });
 
-      // Luego agregar pedidos por props (sin duplicar)
+      // ❌ DESHABILITADO: Props tenían datos desactualizados (cantidad_pedida en lugar de cantidad_preparada)
+      // Antes se combinaban pedidos de Supabase + props, pero props contenían:
+      // - Cantidades PEDIDAS (no preparadas)
+      // - Productos sin stock aparecían con cantidades completas
+      // - Total calculado incorrectamente
+      // Ahora SOLO usamos Supabase que tiene los datos reales después de preparación
+      /*
       [...pedidosCompletados, ...pedidosWhatsApp].forEach(pedido => {
-        if (pedido && pedido.id && !idsYaProcesados.has(pedido.id) && pedido.estado === 'completado') {
-          idsYaProcesados.add(pedido.id);
+        const idNormalizado = String(pedido.id);
+        if (pedido && pedido.id && !idsYaProcesados.has(idNormalizado) && pedido.estado === 'completado') {
+          idsYaProcesados.add(idNormalizado);
           pedidosUnicos.push(pedido);
         }
       });
+      */
 
       console.log('✅ Pedidos únicos después de filtrar:', pedidosUnicos.length);
 
@@ -246,7 +255,9 @@ const Facturacion: React.FC<FacturacionProps> = ({
               // ✅ CORRECCIÓN 4: Calcular cantidad TOTAL sumando variantes PREPARADAS
               const cantidadTotal = producto.variantes && producto.variantes.length > 0
                 ? producto.variantes.reduce((sum: number, v: any) => sum + (v.cantidadPreparada || 0), 0)
-                : producto.cantidadPreparada || producto.cantidadPedida || 0;
+                : (producto.cantidadPreparada !== undefined && producto.cantidadPreparada !== null
+                    ? producto.cantidadPreparada
+                    : producto.cantidadPedida || 0);
 
               return {
                 id: producto.id || `prod-${Math.random().toString(36).substr(2, 9)}`,
@@ -277,7 +288,9 @@ const Facturacion: React.FC<FacturacionProps> = ({
               return pedido.productos?.reduce((sum: number, prod: any) => {
                 const cantidadReal = prod.variantes && prod.variantes.length > 0
                   ? prod.variantes.reduce((vSum: number, v: any) => vSum + (v.cantidadPreparada || 0), 0)
-                  : prod.cantidadPreparada || prod.cantidadPedida || 0;
+                  : (prod.cantidadPreparada !== undefined && prod.cantidadPreparada !== null
+                      ? prod.cantidadPreparada
+                      : prod.cantidadPedida || 0);
                 return sum + (cantidadReal * (prod.precio || prod.precio_unitario || 0));
               }, 0) || pedido.total || 0;
             })(),

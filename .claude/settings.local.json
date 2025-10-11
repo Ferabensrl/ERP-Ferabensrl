@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(C:\\Users\\Usuario\\sistema-compras-mare/**)",
+      "Read(C:\\Users\\Usuario\\feraben-crm-v2-test/**)",
+      "Read(C:\\Users\\Usuario\\mare-website/**)",
+      "Read(C:\\Users\\Usuario\\mare-catalog-v2/**)",
+      "Read(C:\\Users\\Usuario\\sistema-compras-mare/**)",
+      "Read(C:\\Users\\Usuario\\sistema-compras-mare/**)",
+      "Read(C:\\Users\\Usuario\\sistema-compras-mare/**)",
+      "Read(C:\\Users\\Usuario\\feraben-crm-v2-test/**)",
+      "Read(C:\\Users\\Usuario\\mare-website/**)",
+      "Read(C:\\Users\\Usuario\\mare-catalog-v2/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

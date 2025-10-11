@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Package, ShoppingCart, MessageSquare, Scan, BarChart3, FileText, Target } from 'lucide-react'
+import { Package, ShoppingCart, MessageSquare, Scan, BarChart3, FileText, Target, Inbox } from 'lucide-react'
 
 // Importes de componentes
 import Dashboard from './components/Dashboard'
@@ -10,6 +10,8 @@ import ScannerMultiEngine from './components/Scanner/ScannerMultiEngine'
 import Facturacion from './components/Facturacion/Facturacion'
 import DashboardSupabase from './components/Dashboard/DashboardSupabase'
 import ControlEjecutivo from './components/ControlEjecutivo/ControlEjecutivo'
+// ✨ NUEVO COMPONENTE - Integración Catálogo → ERP
+import PedidosRecibidos from './components/PedidosRecibidos/PedidosRecibidos'
 
 // TIPOS ACTUALIZADOS para integración completa
 interface VarianteProducto {
@@ -94,14 +96,17 @@ function App() {
     switch (activeModule) {
       case 'dashboard':
         return <DashboardSupabase onNavigate={setActiveModule} />
-     case 'pedidos':
-  return (
-    <Pedidos 
-      pedidosWhatsApp={pedidosWhatsApp}
-      onCompletarPedido={completarPedido}
-      onVolverDashboard={() => setActiveModule('dashboard')}
-    />
-  )
+      case 'pedidos':
+        return (
+          <Pedidos
+            pedidosWhatsApp={pedidosWhatsApp}
+            onCompletarPedido={completarPedido}
+            onVolverDashboard={() => setActiveModule('dashboard')}
+          />
+        )
+      // ✨ NUEVO: Pedidos Recibidos del Catálogo
+      case 'pedidos-recibidos':
+        return <PedidosRecibidos onVolverDashboard={() => setActiveModule('dashboard')} />
       case 'whatsapp':
         return <WhatsAppConverter />
       case 'inventario':
@@ -110,7 +115,7 @@ function App() {
         return <ScannerMultiEngine />
       case 'facturacion':
         return (
-          <Facturacion 
+          <Facturacion
             pedidosCompletados={pedidosCompletados}
             pedidosWhatsApp={pedidosWhatsApp}
           />
@@ -179,20 +184,28 @@ function App() {
             onClick={() => setActiveModule('control-ejecutivo')} 
           />
           
-          <NavButton 
-            icon={<ShoppingCart size={20} />} 
-            text="Pedidos" 
-            active={activeModule === 'pedidos'} 
+          <NavButton
+            icon={<ShoppingCart size={20} />}
+            text="Pedidos"
+            active={activeModule === 'pedidos'}
             onClick={() => setActiveModule('pedidos')}
-            badge={pedidosWhatsApp.filter(p => p.estado !== 'completado').length > 0 ? 
+            badge={pedidosWhatsApp.filter(p => p.estado !== 'completado').length > 0 ?
               pedidosWhatsApp.filter(p => p.estado !== 'completado').length.toString() : undefined}
           />
-          
-          <NavButton 
-            icon={<MessageSquare size={20} />} 
-            text="WhatsApp" 
-            active={activeModule === 'whatsapp'} 
-            onClick={() => setActiveModule('whatsapp')} 
+
+          {/* ✨ NUEVO: Pedidos Recibidos del Catálogo */}
+          <NavButton
+            icon={<Inbox size={20} />}
+            text="Pedidos Recibidos"
+            active={activeModule === 'pedidos-recibidos'}
+            onClick={() => setActiveModule('pedidos-recibidos')}
+          />
+
+          <NavButton
+            icon={<MessageSquare size={20} />}
+            text="WhatsApp"
+            active={activeModule === 'whatsapp'}
+            onClick={() => setActiveModule('whatsapp')}
           />
           
           <NavButton 
