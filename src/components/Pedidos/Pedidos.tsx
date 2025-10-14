@@ -250,11 +250,14 @@ const convertirPedidoDeSupabase = async (dbPedido: DbPedido, dbItems: DbPedidoIt
     }
 
     const producto = productosMap.get(codigo)!;
-    
+
     // Si hay variante de color, es un producto de WhatsApp con variantes
-    if (item.variante_color && item.variante_color !== 'Sin especificar') {
+    // ✅ CORRECCIÓN: 'Surtido' NO es una variante, es un producto normal
+    if (item.variante_color &&
+        item.variante_color !== 'Sin especificar' &&
+        item.variante_color !== 'Surtido') {
       if (!producto.variantes) producto.variantes = [];
-      
+
       producto.variantes.push({
         id: item.id?.toString() || `${codigo}-${item.variante_color}`,
         color: item.variante_color,
@@ -263,7 +266,7 @@ const convertirPedidoDeSupabase = async (dbPedido: DbPedido, dbItems: DbPedidoIt
         estado: item.estado as 'pendiente' | 'completado' | 'sin_stock'
       });
     } else {
-      // Producto normal sin variantes
+      // Producto normal sin variantes (incluye 'Surtido')
       producto.cantidadPedida += item.cantidad_pedida;
       producto.cantidadPreparada += item.cantidad_preparada;
     }
@@ -501,10 +504,76 @@ const Pedidos: React.FC<PedidosProps> = ({
     console.log('🗑️ Progreso limpiado para pedido:', pedidoId);
   };
   // ✅ FUNCIÓN CORREGIDA: Iniciar preparación con carga de progreso (EXACTAMENTE IGUAL)
-  const iniciarPreparacion = (pedido: Pedido) => {
+  const iniciarPreparacion = async (pedido: Pedido) => {
     setPedidoSeleccionado(pedido);
 
-    // ✅ CORRECCIÓN 1: Intentar cargar progreso guardado
+    console.log('🔍 DEBUG: Iniciando preparación de pedido', {
+      pedidoId: pedido.id,
+      numero: pedido.numero,
+      estado: pedido.estado,
+      productos: pedido.productos
+    });
+
+    // ✅ CORRECCIÓN 1: SI ES UN PEDIDO DE SUPABASE Y ESTÁ EN 'PREPARANDO', CARGAR DESDE SUPABASE
+    if (pedido.esDeWhatsApp || parseInt(pedido.id) > 0) {
+      try {
+        console.log('☁️ Cargando datos del pedido desde Supabase...');
+        const itemsDB = await pedidosService.getItemsByPedidoId(parseInt(pedido.id));
+        console.log('📦 Items cargados desde BD:', itemsDB);
+
+        // Reconstruir productos desde pedido_items
+        const productosMap = new Map<string, any>();
+
+        itemsDB.forEach((item: any) => {
+          if (!productosMap.has(item.codigo_producto)) {
+            // Buscar info del producto en el array original
+            const productoInfo = pedido.productos.find((p: any) => p.codigo === item.codigo_producto || p.codigo_producto === item.codigo_producto);
+
+            productosMap.set(item.codigo_producto, {
+              id: item.codigo_producto,
+              codigo: item.codigo_producto,
+              nombre: productoInfo?.nombre || item.codigo_producto,
+              cantidadPedida: 0,
+              cantidadPreparada: 0,
+              precio: item.precio_unitario,
+              estado: 'pendiente' as const,
+              variantes: []
+            });
+          }
+
+          const producto = productosMap.get(item.codigo_producto);
+
+          // Si tiene variante_color y NO es 'Surtido', es una variante real
+          if (item.variante_color && item.variante_color !== 'Surtido' && item.variante_color !== 'Sin especificar') {
+            producto.variantes.push({
+              id: `${item.codigo_producto}-${item.variante_color}`,
+              color: item.variante_color,
+              cantidadPedida: item.cantidad_pedida,
+              cantidadPreparada: item.cantidad_preparada,
+              estado: item.estado
+            });
+          } else {
+            // Es un producto sin variantes (Surtido)
+            producto.cantidadPedida = item.cantidad_pedida;
+            producto.cantidadPreparada = item.cantidad_preparada;
+            producto.estado = item.estado;
+          }
+        });
+
+        const productosReconstruidos = Array.from(productosMap.values());
+        console.log('✅ Productos reconstruidos desde BD:', productosReconstruidos);
+
+        setProductosEditables(productosReconstruidos);
+        setComentarios(pedido.comentarios || '');
+        setVistaActual('deposito');
+        return; // Salir temprano - ya cargamos desde BD
+      } catch (error) {
+        console.error('❌ Error cargando desde Supabase, usando datos locales:', error);
+        // Continuar con el flujo normal si falla
+      }
+    }
+
+    // ✅ CORRECCIÓN 2: Intentar cargar progreso guardado LOCAL
     const progresoExistente = cargarProgreso(pedido.id);
 
     if (progresoExistente) {
@@ -570,12 +639,12 @@ const Pedidos: React.FC<PedidosProps> = ({
             });
           });
         } else {
-          // Producto sin variantes
+          // Producto sin variantes - usar 'Surtido'
           itemsParaActualizar.push({
             codigo_producto: producto.codigo,
             cantidad_preparada: producto.cantidadPreparada,
             estado: producto.estado,
-            variante_color: ''
+            variante_color: 'Surtido'  // ✅ FIX: Usar 'Surtido' en lugar de ''
           });
         }
       });
@@ -877,11 +946,12 @@ const Pedidos: React.FC<PedidosProps> = ({
             });
           });
         } else {
+          // ✅ CORRECCIÓN: Productos sin variantes usan 'Surtido', NO string vacío
           itemsFinales.push({
             codigo_producto: producto.codigo,
             cantidad_preparada: producto.cantidadPreparada,
             estado: producto.estado,
-            variante_color: ''
+            variante_color: 'Surtido'
           });
         }
       });

@@ -183,6 +183,16 @@ const Facturacion: React.FC<FacturacionProps> = ({
           esDeWhatsApp: pedido.origen === 'whatsapp'
         };
 
+        console.log('🔍 DEBUG Pedido convertido:', {
+          numero: pedidoConvertido.numero,
+          productos: pedidoConvertido.productos.map((p: any) => ({
+            id: p.id,
+            codigo: p.codigo,
+            nombre: p.nombre,
+            cantidadPreparada: p.cantidadPreparada
+          }))
+        });
+
         pedidosParaFacturar.push(pedidoConvertido);
       }
 
@@ -591,6 +601,75 @@ const Facturacion: React.FC<FacturacionProps> = ({
   const verPreview = () => {
     setVistaActual('preview');
   };
+
+  // ✅ NUEVA FUNCIÓN: Devolver pedido a depósito (con confirmación de seguridad)
+  const devolverPedidoADeposito = async (pedidoId: string, numeroPedido: string) => {
+    const confirmar = confirm(
+      `⚠️ ¿Estás seguro de devolver el pedido ${numeroPedido} a Depósito?\n\n` +
+      `Esto hará que:\n` +
+      `✅ El pedido vuelva a aparecer en Depósito\n` +
+      `✅ Puedas volver a prepararlo correctamente\n` +
+      `✅ Las cantidades preparadas se mantengan\n\n` +
+      `¿Continuar?`
+    );
+
+    if (!confirmar) return;
+
+    try {
+      console.log(`🔄 Devolviendo pedido ${pedidoId} a depósito...`);
+
+      // Cambiar estado del pedido a 'preparando'
+      const { error: pedidoError } = await supabase
+        .from('pedidos')
+        .update({
+          estado: 'preparando',
+          fecha_completado: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', parseInt(pedidoId));
+
+      if (pedidoError) {
+        console.error('❌ Error devolviendo pedido:', pedidoError);
+        alert('❌ Error al devolver el pedido a depósito');
+        return;
+      }
+
+      console.log('✅ Pedido devuelto a depósito exitosamente');
+
+      // Recargar la lista de pedidos
+      const pedidosDeSupabase = await cargarPedidosCompletadosDeSupabase();
+      const pedidosParaFacturar = pedidosDeSupabase
+        .filter((p: any) => p && p.estado === 'completado')
+        .map((pedido: any) => {
+          const esDeWhatsApp = Boolean(pedido.esDeWhatsApp || pedido.origen === 'whatsapp');
+          return {
+            id: pedido.id,
+            numero: pedido.numero || `PED-${pedido.id}`,
+            cliente: pedido.cliente || {
+              id: `cliente-${pedido.id}`,
+              nombre: pedido.cliente_nombre || 'Cliente no especificado'
+            },
+            fecha: pedido.fecha || new Date().toISOString().split('T')[0],
+            estado: 'completado' as const,
+            productos: pedido.productos || [],
+            total: pedido.total || 0,
+            seleccionado: false,
+            comentarios: pedido.comentarios || '',
+            esDeWhatsApp: esDeWhatsApp,
+            yaFacturado: false
+          };
+        });
+
+      const pedidosNoFacturados = pedidosParaFacturar.filter((p: any) => !pedidosProcesados.has(p.id));
+      setPedidosListos(pedidosNoFacturados);
+
+      alert(`✅ Pedido ${numeroPedido} devuelto a Depósito correctamente\n\n📦 Refresca la página o ve a Depósito para verlo`);
+
+    } catch (error) {
+      console.error('❌ Error en devolverPedidoADeposito:', error);
+      alert('❌ Error inesperado al devolver el pedido');
+    }
+  };
   // ✅ FUNCIÓN PRINCIPAL CORREGIDA: Generar Excel con códigos de barras
   const generarExcel = async () => {
     setGenerandoExcel(true);
@@ -998,13 +1077,40 @@ pedidosSeleccionados.forEach(pedido => {
                           </div>
                         </div>
 
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '18px', fontWeight: '700', color: '#111827' }}>
-                            ${pedido.total.toLocaleString()}
+                        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                          <div>
+                            <div style={{ fontSize: '18px', fontWeight: '700', color: '#111827' }}>
+                              ${pedido.total.toLocaleString()}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                              Total real preparado
+                            </div>
                           </div>
-                          <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                            Total real preparado
-                          </div>
+                          {/* ✅ BOTÓN: Devolver a Depósito */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation(); // Evitar que se seleccione el pedido
+                              devolverPedidoADeposito(pedido.id, pedido.numero);
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '4px 8px',
+                              backgroundColor: '#f59e0b',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap'
+                            }}
+                            title="Devolver este pedido a Depósito para volverlo a preparar"
+                          >
+                            <ArrowLeft size={12} />
+                            Volver a Depósito
+                          </button>
                         </div>
                       </div>
 

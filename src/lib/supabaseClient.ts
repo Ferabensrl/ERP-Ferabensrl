@@ -91,27 +91,23 @@ export const productosService = {
   // ✅ FUNCIÓN CORREGIDA: Buscar producto por código
   async getByCodigo(codigo: string): Promise<DbProducto | null> {
     try {
-      console.log(`🔍 Buscando producto con código: "${codigo}"`);
-      
       const { data, error } = await supabase
         .from('inventario')
         .select('*')
         .eq('codigo_producto', codigo)
         .eq('activo', true)
         .single()
-      
+
       if (error) {
         if (error.code === 'PGRST116') {
           // PGRST116 es "no rows found" - esto es normal, no es un error
-          console.log(`⚠️ Producto ${codigo} no encontrado en la base de datos`);
           return null;
         } else {
           console.error('Error al buscar producto:', error)
           throw error
         }
       }
-      
-      console.log(`✅ Producto ${codigo} encontrado:`, data);
+
       return data
     } catch (error) {
       console.error(`❌ Error en productosService.getByCodigo para código ${codigo}:`, error)
@@ -145,14 +141,11 @@ export const productosService = {
   // ✅ NUEVA FUNCIÓN: Reducir stock por código de producto
   async reducirStock(codigoProducto: string, cantidadAReducir: number): Promise<{success: boolean, stockAnterior: number, stockNuevo: number}> {
     try {
-      console.log(`🔄 Reduciendo stock para ${codigoProducto}: -${cantidadAReducir}`);
-      
       // Buscar el producto por código
       const producto = await this.getByCodigo(codigoProducto);
       if (!producto) {
         // ⚠️ Producto no está en inventario (probablemente viene del catálogo)
         // No es un error - simplemente continuamos sin reducir stock
-        console.warn(`⚠️ Producto ${codigoProducto} no está en inventario - continuando sin reducir stock (producto del catálogo)`);
         return {
           success: false,
           stockAnterior: 0,
@@ -162,12 +155,10 @@ export const productosService = {
 
       const stockAnterior = producto.stock;
       const stockNuevo = Math.max(0, stockAnterior - cantidadAReducir);
-      
+
       // Actualizar el stock
       await this.updateStock(producto.id, stockNuevo);
-      
-      console.log(`✅ Stock actualizado: ${codigoProducto} | ${stockAnterior} → ${stockNuevo}`);
-      
+
       return {
         success: true,
         stockAnterior,
@@ -432,7 +423,8 @@ export const pedidosService = {
 
       // 2. Actualizar cada item individualmente
       for (const item of items) {
-        const { error: itemError } = await supabase
+        // ✅ CORRECCIÓN CRÍTICA: Manejar null vs 'Surtido'
+        let query = supabase
           .from('pedido_items')
           .update({
             cantidad_preparada: item.cantidad_preparada,
@@ -440,8 +432,17 @@ export const pedidosService = {
             updated_at: new Date().toISOString()
           })
           .eq('pedido_id', pedidoId)
-          .eq('codigo_producto', item.codigo_producto)
-          .eq('variante_color', item.variante_color || '');
+          .eq('codigo_producto', item.codigo_producto);
+
+        // Si variante_color es 'Surtido' o vacío, buscar NULL en BD
+        if (!item.variante_color || item.variante_color === 'Surtido') {
+          query = query.is('variante_color', null);
+        } else {
+          // Tiene variante real (color), buscar por ese valor
+          query = query.eq('variante_color', item.variante_color);
+        }
+
+        const { error: itemError } = await query;
 
         if (itemError) {
           console.error(`❌ Error actualizando item ${item.codigo_producto}:`, itemError);
@@ -488,7 +489,12 @@ export const pedidosService = {
 
       // 2. Actualizar todos los items con cantidades finales
       for (const item of items) {
-        const { error: itemError } = await supabase
+        // ✅ CORRECCIÓN CRÍTICA: Manejar null vs 'Surtido'
+        // En la BD, productos sin variante tienen variante_color = NULL
+        // Pero desde el frontend enviamos 'Surtido'
+        // Necesitamos buscar por NULL cuando recibimos 'Surtido'
+
+        let query = supabase
           .from('pedido_items')
           .update({
             cantidad_preparada: item.cantidad_preparada,
@@ -496,11 +502,20 @@ export const pedidosService = {
             updated_at: new Date().toISOString()
           })
           .eq('pedido_id', pedidoId)
-          .eq('codigo_producto', item.codigo_producto)
-          .eq('variante_color', item.variante_color || '');
+          .eq('codigo_producto', item.codigo_producto);
+
+        // Si variante_color es 'Surtido' o vacío, buscar NULL en BD
+        if (!item.variante_color || item.variante_color === 'Surtido') {
+          query = query.is('variante_color', null);
+        } else {
+          // Tiene variante real (color), buscar por ese valor
+          query = query.eq('variante_color', item.variante_color);
+        }
+
+        const { error: itemError } = await query;
 
         if (itemError) {
-          console.error(`❌ Error finalizando item ${item.codigo_producto}:`, itemError);
+          console.error(`❌ Error finalizando item ${item.codigo_producto} con variante "${item.variante_color}":`, itemError);
           throw itemError;
         }
       }
