@@ -1245,7 +1245,6 @@ const Pedidos: React.FC<PedidosProps> = ({
       }
 
       // Footer
-      const pageHeight = doc.internal.pageSize.height;
       const footerY = pageHeight - 15;
       doc.setFontSize(8);
       doc.setTextColor(120, 120, 120);
