@@ -1161,7 +1161,20 @@ const Pedidos: React.FC<PedidosProps> = ({
       doc.setFont(undefined, 'normal');
       doc.setFontSize(8);
 
+      const pageHeight = doc.internal.pageSize.height;
+
+      const checkPageBreak = (requiredSpace = 15) => {
+        if (y + requiredSpace > pageHeight - 20) {
+          doc.addPage();
+          y = MARGEN;
+          return true;
+        }
+        return false;
+      };
+
       pedidoSeleccionado.productos.forEach((producto, index) => {
+        checkPageBreak(30); // Verificar espacio antes de cada producto
+
         if (index > 0) {
           doc.setDrawColor(200, 200, 200);
           doc.setLineWidth(0.3);
@@ -1182,6 +1195,7 @@ const Pedidos: React.FC<PedidosProps> = ({
         // Variantes
         if (producto.variantes && producto.variantes.length > 0) {
           producto.variantes.forEach((variante) => {
+            checkPageBreak(6); // Verificar espacio antes de cada variante
             doc.text(`  • ${variante.color}`, MARGEN + 30, y);
             doc.text(variante.cantidadPedida.toString(), MARGEN + 130, y, { align: 'right' });
             doc.setFont(undefined, 'bold');
@@ -1199,6 +1213,7 @@ const Pedidos: React.FC<PedidosProps> = ({
 
         // Comentario del producto
         if (producto.comentarioProducto) {
+          checkPageBreak(6);
           doc.setTextColor(100, 100, 100);
           doc.setFontSize(7);
           doc.text(`    >> ${producto.comentarioProducto.toUpperCase()}`, MARGEN + 30, y);
