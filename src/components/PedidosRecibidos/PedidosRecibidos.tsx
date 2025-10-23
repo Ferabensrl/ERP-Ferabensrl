@@ -13,10 +13,14 @@ import {
   Search,
   AlertCircle,
   Download,
-  Upload
+  Upload,
+  Bell,
+  BellOff
 } from 'lucide-react';
 import styles from './PedidosRecibidos.module.css';
 import { supabase, pedidosRecibidosService, type PedidoRecibido, type PedidoRecibidoProducto } from '../../lib/supabaseClient';
+import { generarComprobantePDF, descargarPDF } from '../../lib/pdfGenerator';
+import notificacionesService from '../../lib/notificacionesService';
 
 // ============================================
 // TIPOS Y INTERFACES
@@ -38,6 +42,8 @@ const PedidosRecibidos: React.FC<PedidosRecibidosProps> = ({ onVolverDashboard }
   const [searchTerm, setSearchTerm] = useState('');
   const [modoEdicion, setModoEdicion] = useState(false);
   const [productoEditando, setProductoEditando] = useState<PedidoRecibidoProducto | null>(null);
+  const [notificacionesActivas, setNotificacionesActivas] = useState(false);
+  const [cantidadPedidosAnterior, setCantidadPedidosAnterior] = useState(0);
 
   // ============================================
   // CARGAR PEDIDOS DESDE SUPABASE
@@ -65,9 +71,19 @@ const PedidosRecibidos: React.FC<PedidosRecibidosProps> = ({ onVolverDashboard }
     }
   };
 
-  // Cargar pedidos al montar el componente
+  // ============================================
+  // INICIALIZACIÓN Y NOTIFICACIONES
+  // ============================================
+
   useEffect(() => {
     cargarPedidos();
+
+    // Configurar título original para las notificaciones
+    notificacionesService.setTituloOriginal('Pedidos Recibidos - ERP Feraben');
+
+    // Verificar si las notificaciones ya están habilitadas
+    const notifHabilitadas = notificacionesService.notificacionesHabilitadas();
+    setNotificacionesActivas(notifHabilitadas);
 
     // Suscripción a cambios en tiempo real
     const subscription = supabase
@@ -83,8 +99,65 @@ const PedidosRecibidos: React.FC<PedidosRecibidosProps> = ({ onVolverDashboard }
 
     return () => {
       subscription.unsubscribe();
+      notificacionesService.restaurarTitulo();
     };
   }, []);
+
+  // ============================================
+  // EFECTO: Detectar nuevos pedidos y notificar
+  // ============================================
+
+  useEffect(() => {
+    // Solo notificar si hay más pedidos que antes (y no es la carga inicial)
+    if (cantidadPedidosAnterior > 0 && pedidos.length > cantidadPedidosAnterior) {
+      const pedidosNuevos = pedidos.length - cantidadPedidosAnterior;
+
+      if (notificacionesActivas) {
+        if (pedidosNuevos === 1) {
+          // Notificar pedido individual
+          const pedidoNuevo = pedidos[0]; // El más reciente
+          notificacionesService.notificarNuevoPedido(
+            pedidoNuevo.numero,
+            pedidoNuevo.cliente_nombre,
+            pedidoNuevo.total
+          );
+        } else {
+          // Notificar múltiples pedidos
+          notificacionesService.notificarMultiplesPedidos(pedidosNuevos);
+        }
+      }
+    }
+
+    // Actualizar badge en el título
+    notificacionesService.actualizarBadgeTitulo(pedidos.length);
+
+    // Actualizar cantidad anterior
+    setCantidadPedidosAnterior(pedidos.length);
+  }, [pedidos.length, notificacionesActivas]);
+
+  // ============================================
+  // GESTIÓN DE NOTIFICACIONES
+  // ============================================
+
+  const handleActivarNotificaciones = async () => {
+    const permisoConcedido = await notificacionesService.solicitarPermisoNotificaciones();
+
+    if (permisoConcedido) {
+      setNotificacionesActivas(true);
+      alert('✅ Notificaciones activadas\n\nRecibirás alertas cuando lleguen nuevos pedidos.');
+    } else {
+      alert(
+        '⚠️ No se pudo activar las notificaciones\n\n' +
+        'Por favor, permite las notificaciones en la configuración de tu navegador.'
+      );
+    }
+  };
+
+  const handleDesactivarNotificaciones = () => {
+    setNotificacionesActivas(false);
+    notificacionesService.restaurarTitulo();
+    alert('🔕 Notificaciones desactivadas');
+  };
 
   // ============================================
   // FUNCIONES DE NEGOCIO
@@ -259,6 +332,32 @@ const PedidosRecibidos: React.FC<PedidosRecibidosProps> = ({ onVolverDashboard }
   };
 
   /**
+   * Descargar PDF del pedido
+   */
+  const handleDescargarPDF = () => {
+    if (!pedidoSeleccionado) return;
+
+    try {
+      const datosPDF = {
+        pedido: pedidoSeleccionado,
+        clienteNombre: pedidoSeleccionado.cliente_nombre
+      };
+
+      const pdf = generarComprobantePDF(datosPDF);
+      descargarPDF(pdf, pedidoSeleccionado.numero);
+
+      console.log('✅ PDF generado y descargado:', pedidoSeleccionado.numero);
+    } catch (err) {
+      console.error('❌ Error generando PDF:', err);
+      alert(
+        '❌ Error al generar el PDF\n\n' +
+        'Por favor intenta nuevamente.\n' +
+        `Detalle: ${err instanceof Error ? err.message : 'Error desconocido'}`
+      );
+    }
+  };
+
+  /**
    * Guardar cambios del pedido editado
    */
   const handleGuardarCambios = async () => {
@@ -371,6 +470,16 @@ const PedidosRecibidos: React.FC<PedidosRecibidosProps> = ({ onVolverDashboard }
             Volver a lista
           </button>
           <h2>Pedido {pedidoSeleccionado.numero}</h2>
+
+          {/* Botón Descargar PDF */}
+          <button
+            onClick={handleDescargarPDF}
+            className={styles.btnDescargarPDF}
+            title="Descargar comprobante en PDF"
+          >
+            <Download size={18} />
+            Descargar PDF
+          </button>
         </div>
 
         {/* Información del pedido */}
@@ -550,6 +659,27 @@ const PedidosRecibidos: React.FC<PedidosRecibidosProps> = ({ onVolverDashboard }
           </button>
         )}
         <h2>Pedidos Recibidos ({pedidosFiltrados.length})</h2>
+
+        {/* Botón de Notificaciones */}
+        {notificacionesActivas ? (
+          <button
+            onClick={handleDesactivarNotificaciones}
+            className={styles.btnNotificacionesActivas}
+            title="Desactivar notificaciones"
+          >
+            <Bell size={20} />
+            Notificaciones ON
+          </button>
+        ) : (
+          <button
+            onClick={handleActivarNotificaciones}
+            className={styles.btnNotificaciones}
+            title="Activar notificaciones de nuevos pedidos"
+          >
+            <BellOff size={20} />
+            Activar Notificaciones
+          </button>
+        )}
       </div>
 
       {/* Barra de búsqueda */}

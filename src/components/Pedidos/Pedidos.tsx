@@ -12,11 +12,13 @@ import {
   User,
   Trash2,
   Edit3,
-  Search
+  Search,
+  Download
 } from 'lucide-react';
 import styles from './Pedidos.module.css';
 // ✅ ÚNICA ADICIÓN: Import de Supabase
 import { supabase, pedidosService, productosService, type DbPedido, type DbPedidoItem } from '../../lib/supabaseClient';
+import { jsPDF } from 'jspdf';
 
 // ✅ TIPOS CORREGIDOS para evitar duplicados (MANTENIDOS EXACTAMENTE IGUAL)
 interface VarianteProducto {
@@ -1075,6 +1077,187 @@ const Pedidos: React.FC<PedidosProps> = ({
     }
   };
 
+  // ============================================
+  // FUNCIÓN: Generar y descargar PDF del pedido
+  // ============================================
+  const handleDescargarPDF = () => {
+    if (!pedidoSeleccionado) return;
+
+    try {
+      const doc = new jsPDF();
+
+      // Constantes
+      const COLOR_PRIMARIO = { r: 143, g: 106, b: 80 };
+      const MARGEN = 20;
+      const ANCHO_PAGINA = 210;
+
+      let y = MARGEN;
+
+      // Header con logo MARÉ
+      doc.setFillColor(COLOR_PRIMARIO.r, COLOR_PRIMARIO.g, COLOR_PRIMARIO.b);
+      doc.rect(0, 0, ANCHO_PAGINA, 40, 'F');
+      doc.setFontSize(24);
+      doc.setTextColor(255, 255, 255);
+      doc.setFont(undefined, 'bold');
+      doc.text('MARÉ', ANCHO_PAGINA / 2, 20, { align: 'center' });
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'normal');
+      doc.text('By Feraben SRL', ANCHO_PAGINA / 2, 28, { align: 'center' });
+
+      y = 50;
+
+      // Título
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(18);
+      doc.setFont(undefined, 'bold');
+      doc.text('COMPROBANTE DE PEDIDO', ANCHO_PAGINA / 2, y, { align: 'center' });
+      y += 15;
+
+      // Información del pedido
+      doc.setFontSize(12);
+      doc.setTextColor(COLOR_PRIMARIO.r, COLOR_PRIMARIO.g, COLOR_PRIMARIO.b);
+      doc.text(`Número: ${pedidoSeleccionado.numero}`, MARGEN, y);
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      y += 10;
+
+      const fecha = new Date(pedidoSeleccionado.fecha).toLocaleDateString('es-AR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      doc.text(`Fecha: ${fecha}`, MARGEN, y);
+      y += 7;
+
+      doc.setFont(undefined, 'bold');
+      doc.text('Cliente:', MARGEN, y);
+      doc.setFont(undefined, 'normal');
+      doc.text(pedidoSeleccionado.cliente.nombre, MARGEN + 20, y);
+      y += 12;
+
+      // Línea separadora
+      doc.setDrawColor(COLOR_PRIMARIO.r, COLOR_PRIMARIO.g, COLOR_PRIMARIO.b);
+      doc.setLineWidth(0.5);
+      doc.line(MARGEN, y, ANCHO_PAGINA - MARGEN, y);
+      y += 10;
+
+      // Detalle de productos
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.text('DETALLE DEL PEDIDO', MARGEN, y);
+      y += 10;
+
+      // Headers de tabla
+      doc.setFontSize(9);
+      doc.text('Código', MARGEN, y);
+      doc.text('Producto', MARGEN + 30, y);
+      doc.text('Cant. Pedida', MARGEN + 130, y, { align: 'right' });
+      doc.text('Cant. Preparada', ANCHO_PAGINA - MARGEN, y, { align: 'right' });
+      y += 2;
+      doc.line(MARGEN, y, ANCHO_PAGINA - MARGEN, y);
+      y += 5;
+
+      // Items del pedido
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(8);
+
+      pedidoSeleccionado.productos.forEach((producto, index) => {
+        if (index > 0) {
+          doc.setDrawColor(200, 200, 200);
+          doc.setLineWidth(0.3);
+          doc.line(MARGEN, y - 2, ANCHO_PAGINA - MARGEN, y - 2);
+          y += 3;
+        }
+
+        // Código y nombre
+        doc.setFont(undefined, 'bold');
+        doc.text(producto.codigo, MARGEN, y);
+        const nombreTruncado = producto.nombre.length > 30
+          ? producto.nombre.substring(0, 30) + '...'
+          : producto.nombre;
+        doc.setFont(undefined, 'normal');
+        doc.text(nombreTruncado, MARGEN + 30, y);
+        y += 5;
+
+        // Variantes
+        if (producto.variantes && producto.variantes.length > 0) {
+          producto.variantes.forEach((variante) => {
+            doc.text(`  • ${variante.color}`, MARGEN + 30, y);
+            doc.text(variante.cantidadPedida.toString(), MARGEN + 130, y, { align: 'right' });
+            doc.setFont(undefined, 'bold');
+            doc.text(variante.cantidadPreparada.toString(), ANCHO_PAGINA - MARGEN, y, { align: 'right' });
+            doc.setFont(undefined, 'normal');
+            y += 5;
+          });
+        } else {
+          // Sin variantes
+          doc.text(producto.cantidadPedida.toString(), MARGEN + 130, y - 5, { align: 'right' });
+          doc.setFont(undefined, 'bold');
+          doc.text(producto.cantidadPreparada.toString(), ANCHO_PAGINA - MARGEN, y - 5, { align: 'right' });
+          doc.setFont(undefined, 'normal');
+        }
+
+        // Comentario del producto
+        if (producto.comentarioProducto) {
+          doc.setTextColor(100, 100, 100);
+          doc.setFontSize(7);
+          doc.text(`    >> ${producto.comentarioProducto.toUpperCase()}`, MARGEN + 30, y);
+          doc.setTextColor(0, 0, 0);
+          doc.setFontSize(8);
+          y += 5;
+        }
+
+        y += 3;
+      });
+
+      // Comentario final
+      if (pedidoSeleccionado.comentarioFinal) {
+        y += 5;
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'bold');
+        doc.text('Observaciones:', MARGEN, y);
+        y += 6;
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(9);
+        const comentarioLineas = doc.splitTextToSize(
+          pedidoSeleccionado.comentarioFinal,
+          ANCHO_PAGINA - 2 * MARGEN
+        );
+        comentarioLineas.forEach((linea: string) => {
+          doc.text(linea, MARGEN, y);
+          y += 5;
+        });
+      }
+
+      // Footer
+      const pageHeight = doc.internal.pageSize.height;
+      const footerY = pageHeight - 15;
+      doc.setFontSize(8);
+      doc.setTextColor(120, 120, 120);
+      doc.setFont(undefined, 'italic');
+      doc.text(
+        `Generado desde ERP: ${new Date().toLocaleString('es-AR')}`,
+        ANCHO_PAGINA / 2,
+        footerY,
+        { align: 'center' }
+      );
+
+      // Descargar
+      const timestamp = Date.now();
+      const nombreArchivo = `Pedido_${pedidoSeleccionado.numero}_${timestamp}.pdf`;
+      doc.save(nombreArchivo);
+
+      console.log('✅ PDF generado y descargado:', nombreArchivo);
+    } catch (err) {
+      console.error('❌ Error generando PDF:', err);
+      alert(
+        '❌ Error al generar el PDF\n\n' +
+        'Por favor intenta nuevamente.\n' +
+        `Detalle: ${err instanceof Error ? err.message : 'Error desconocido'}`
+      );
+    }
+  };
+
   // ✅ NUEVAS FUNCIONES PARA EDITAR PEDIDOS - Solo agregadas, no modifican nada existente
   const buscarProductosEnInventario = async (codigo: string) => {
     if (!codigo.trim()) {
@@ -1434,7 +1617,17 @@ const Pedidos: React.FC<PedidosProps> = ({
             <ArrowLeft size={16} />
             Volver
           </button>
-          
+
+          {/* ✅ BOTÓN DESCARGAR PDF */}
+          <button
+            onClick={handleDescargarPDF}
+            className={styles.buttonSuccess}
+            title="Descargar comprobante en PDF"
+          >
+            <Download size={16} />
+            Descargar PDF
+          </button>
+
           {/* ✅ BOTÓN EDITAR SEGURO - En vista detalle estable */}
           <button
             onClick={() => setModoEdicion(!modoEdicion)}
