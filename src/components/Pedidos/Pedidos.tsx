@@ -1147,22 +1147,23 @@ const Pedidos: React.FC<PedidosProps> = ({
       doc.text('DETALLE DEL PEDIDO', MARGEN, y);
       y += 10;
 
-      // Headers de tabla - 5 COLUMNAS PERFECTAMENTE DISTRIBUIDAS
-      // Espacio útil: 170mm (210 - 40 de márgenes)
-      // Código: 25mm | Producto: 60mm | Color: 45mm | Pedida: 20mm | Preparada: 20mm
+      // Headers de tabla - 6 COLUMNAS (IGUAL QUE PEDIDOS RECIBIDOS + PREPARADA)
+      // Código | Producto | Color/Variante | Cant. | Precio Unit. | Preparada
       doc.setFontSize(9);
       doc.setFont(undefined, 'bold');
 
       const colCodigo = MARGEN;                    // 20
-      const colProducto = MARGEN + 25;             // 45
+      const colProducto = MARGEN + 30;             // 50
       const colColor = MARGEN + 85;                // 105
-      const colPedida = MARGEN + 130;              // 150 (right align)
+      const colCantidad = MARGEN + 130;            // 150 (right align)
+      const colPrecio = MARGEN + 157;              // 177 (right align)
       const colPreparada = ANCHO_PAGINA - MARGEN;  // 190 (right align)
 
       doc.text('Código', colCodigo, y);
       doc.text('Producto', colProducto, y);
       doc.text('Color/Variante', colColor, y);
-      doc.text('Pedida', colPedida, y, { align: 'right' });
+      doc.text('Cant.', colCantidad, y, { align: 'right' });
+      doc.text('Precio Unit.', colPrecio, y, { align: 'right' });
       doc.text('Preparada', colPreparada, y, { align: 'right' });
 
       y += 2;
@@ -1216,7 +1217,11 @@ const Pedidos: React.FC<PedidosProps> = ({
             doc.text(`  • ${variante.color}`, colColor, y);
 
             // Cantidad pedida
-            doc.text(variante.cantidadPedida.toString(), colPedida, y, { align: 'right' });
+            doc.text(variante.cantidadPedida.toString(), colCantidad, y, { align: 'right' });
+
+            // Precio unitario
+            const precioUnitario = producto.precio || 0;
+            doc.text(`$${precioUnitario.toLocaleString('es-AR')}`, colPrecio, y, { align: 'right' });
 
             // Cantidad preparada
             doc.setFont(undefined, 'bold');
@@ -1227,7 +1232,10 @@ const Pedidos: React.FC<PedidosProps> = ({
           });
         } else {
           // Sin variantes
-          doc.text(producto.cantidadPedida.toString(), colPedida, y - 5, { align: 'right' });
+          const precioUnitario = producto.precio || 0;
+
+          doc.text(producto.cantidadPedida.toString(), colCantidad, y - 5, { align: 'right' });
+          doc.text(`$${precioUnitario.toLocaleString('es-AR')}`, colPrecio, y - 5, { align: 'right' });
           doc.setFont(undefined, 'bold');
           doc.text(producto.cantidadPreparada.toString(), colPreparada, y - 5, { align: 'right' });
           doc.setFont(undefined, 'normal');
