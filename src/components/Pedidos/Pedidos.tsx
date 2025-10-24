@@ -1147,17 +1147,17 @@ const Pedidos: React.FC<PedidosProps> = ({
       doc.text('DETALLE DEL PEDIDO', MARGEN, y);
       y += 10;
 
-      // Headers de tabla - 6 COLUMNAS (IGUAL QUE PEDIDOS RECIBIDOS + PREPARADA)
+      // Headers de tabla - 6 COLUMNAS OPTIMIZADAS PARA EVITAR SUPERPOSICIÓN
       // Código | Producto | Color/Variante | Cant. | Precio Unit. | Preparada
       doc.setFontSize(9);
       doc.setFont(undefined, 'bold');
 
       const colCodigo = MARGEN;                    // 20
-      const colProducto = MARGEN + 30;             // 50
-      const colColor = MARGEN + 85;                // 105
-      const colCantidad = MARGEN + 130;            // 150 (right align)
-      const colPrecio = MARGEN + 157;              // 177 (right align)
-      const colPreparada = ANCHO_PAGINA - MARGEN;  // 190 (right align)
+      const colProducto = MARGEN + 25;             // 45 (reducido 5mm)
+      const colColor = MARGEN + 60;                // 80 (ajustado)
+      const colCantidad = MARGEN + 105;            // 125 (right align, mejor centrado)
+      const colPrecio = MARGEN + 132;              // 152 (right align, más espacio)
+      const colPreparada = MARGEN + 165;           // 185 (right align, separado del borde)
 
       doc.text('Código', colCodigo, y);
       doc.text('Producto', colProducto, y);
