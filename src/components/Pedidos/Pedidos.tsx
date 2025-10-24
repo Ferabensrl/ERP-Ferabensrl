@@ -1147,14 +1147,23 @@ const Pedidos: React.FC<PedidosProps> = ({
       doc.text('DETALLE DEL PEDIDO', MARGEN, y);
       y += 10;
 
-      // Headers de tabla (IGUAL QUE PEDIDOS RECIBIDOS)
+      // Headers de tabla - 5 COLUMNAS PERFECTAMENTE DISTRIBUIDAS
+      // Espacio útil: 170mm (210 - 40 de márgenes)
+      // Código: 25mm | Producto: 60mm | Color: 45mm | Pedida: 20mm | Preparada: 20mm
       doc.setFontSize(9);
       doc.setFont(undefined, 'bold');
-      doc.text('Código', MARGEN, y);
-      doc.text('Producto', MARGEN + 30, y);
-      doc.text('Color/Variante', MARGEN + 85, y);
-      doc.text('Cant.', MARGEN + 130, y, { align: 'right' });
-      doc.text('Preparada', ANCHO_PAGINA - MARGEN, y, { align: 'right' });
+
+      const colCodigo = MARGEN;                    // 20
+      const colProducto = MARGEN + 25;             // 45
+      const colColor = MARGEN + 85;                // 105
+      const colPedida = MARGEN + 130;              // 150 (right align)
+      const colPreparada = ANCHO_PAGINA - MARGEN;  // 190 (right align)
+
+      doc.text('Código', colCodigo, y);
+      doc.text('Producto', colProducto, y);
+      doc.text('Color/Variante', colColor, y);
+      doc.text('Pedida', colPedida, y, { align: 'right' });
+      doc.text('Preparada', colPreparada, y, { align: 'right' });
 
       y += 2;
       doc.line(MARGEN, y, ANCHO_PAGINA - MARGEN, y);
@@ -1187,14 +1196,14 @@ const Pedidos: React.FC<PedidosProps> = ({
 
         // Código del producto
         doc.setFont(undefined, 'bold');
-        doc.text(producto.codigo, MARGEN, y);
+        doc.text(producto.codigo, colCodigo, y);
 
         // Nombre del producto (truncar si es muy largo)
-        const nombreTruncado = producto.nombre.length > 30
-          ? producto.nombre.substring(0, 30) + '...'
+        const nombreTruncado = producto.nombre.length > 35
+          ? producto.nombre.substring(0, 35) + '...'
           : producto.nombre;
         doc.setFont(undefined, 'normal');
-        doc.text(nombreTruncado, MARGEN + 30, y);
+        doc.text(nombreTruncado, colProducto, y);
 
         y += 5;
 
@@ -1204,23 +1213,23 @@ const Pedidos: React.FC<PedidosProps> = ({
             checkPageBreak(6);
 
             // Color
-            doc.text(`  • ${variante.color}`, MARGEN + 85, y);
+            doc.text(`  • ${variante.color}`, colColor, y);
 
             // Cantidad pedida
-            doc.text(variante.cantidadPedida.toString(), MARGEN + 130, y, { align: 'right' });
+            doc.text(variante.cantidadPedida.toString(), colPedida, y, { align: 'right' });
 
             // Cantidad preparada
             doc.setFont(undefined, 'bold');
-            doc.text(variante.cantidadPreparada.toString(), ANCHO_PAGINA - MARGEN, y, { align: 'right' });
+            doc.text(variante.cantidadPreparada.toString(), colPreparada, y, { align: 'right' });
             doc.setFont(undefined, 'normal');
 
             y += 5;
           });
         } else {
           // Sin variantes
-          doc.text(producto.cantidadPedida.toString(), MARGEN + 130, y - 5, { align: 'right' });
+          doc.text(producto.cantidadPedida.toString(), colPedida, y - 5, { align: 'right' });
           doc.setFont(undefined, 'bold');
-          doc.text(producto.cantidadPreparada.toString(), ANCHO_PAGINA - MARGEN, y - 5, { align: 'right' });
+          doc.text(producto.cantidadPreparada.toString(), colPreparada, y - 5, { align: 'right' });
           doc.setFont(undefined, 'normal');
         }
 
@@ -1229,7 +1238,7 @@ const Pedidos: React.FC<PedidosProps> = ({
           checkPageBreak(6);
           doc.setTextColor(100, 100, 100);
           doc.setFontSize(7);
-          doc.text(`    >> ${producto.comentarioProducto.toUpperCase()}`, MARGEN + 30, y);
+          doc.text(`    >> ${producto.comentarioProducto.toUpperCase()}`, colProducto, y);
           doc.setTextColor(0, 0, 0);
           doc.setFontSize(8);
           y += 5;
