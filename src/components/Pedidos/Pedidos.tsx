@@ -1147,18 +1147,15 @@ const Pedidos: React.FC<PedidosProps> = ({
       doc.text('DETALLE DEL PEDIDO', MARGEN, y);
       y += 10;
 
-      // Headers de tabla (con posiciones ajustadas)
+      // Headers de tabla (IGUAL QUE PEDIDOS RECIBIDOS)
       doc.setFontSize(9);
       doc.setFont(undefined, 'bold');
-      const colCodigo = MARGEN;
-      const colProducto = MARGEN + 25;
-      const colPedida = ANCHO_PAGINA - MARGEN - 35;
-      const colPreparada = ANCHO_PAGINA - MARGEN - 5;
+      doc.text('Código', MARGEN, y);
+      doc.text('Producto', MARGEN + 30, y);
+      doc.text('Color/Variante', MARGEN + 85, y);
+      doc.text('Cant.', MARGEN + 130, y, { align: 'right' });
+      doc.text('Preparada', ANCHO_PAGINA - MARGEN, y, { align: 'right' });
 
-      doc.text('Código', colCodigo, y);
-      doc.text('Producto', colProducto, y);
-      doc.text('Pedida', colPedida, y, { align: 'right' });
-      doc.text('Preparada', colPreparada, y, { align: 'right' });
       y += 2;
       doc.line(MARGEN, y, ANCHO_PAGINA - MARGEN, y);
       y += 5;
@@ -1170,7 +1167,7 @@ const Pedidos: React.FC<PedidosProps> = ({
       const pageHeight = doc.internal.pageSize.height;
 
       const checkPageBreak = (requiredSpace = 15) => {
-        if (y + requiredSpace > pageHeight - 20) {
+        if (y + requiredSpace > pageHeight - MARGEN) {
           doc.addPage();
           y = MARGEN;
           return true;
@@ -1179,7 +1176,7 @@ const Pedidos: React.FC<PedidosProps> = ({
       };
 
       pedidoSeleccionado.productos.forEach((producto, index) => {
-        checkPageBreak(30); // Verificar espacio antes de cada producto
+        checkPageBreak(30);
 
         if (index > 0) {
           doc.setDrawColor(200, 200, 200);
@@ -1188,66 +1185,90 @@ const Pedidos: React.FC<PedidosProps> = ({
           y += 3;
         }
 
-        // Código y nombre
+        // Código del producto
         doc.setFont(undefined, 'bold');
-        doc.text(producto.codigo, colCodigo, y);
-        const nombreTruncado = producto.nombre.length > 40
-          ? producto.nombre.substring(0, 40) + '...'
+        doc.text(producto.codigo, MARGEN, y);
+
+        // Nombre del producto (truncar si es muy largo)
+        const nombreTruncado = producto.nombre.length > 30
+          ? producto.nombre.substring(0, 30) + '...'
           : producto.nombre;
         doc.setFont(undefined, 'normal');
-        doc.text(nombreTruncado, colProducto, y);
+        doc.text(nombreTruncado, MARGEN + 30, y);
+
         y += 5;
 
-        // Variantes
+        // Variantes (colores)
         if (producto.variantes && producto.variantes.length > 0) {
           producto.variantes.forEach((variante) => {
-            checkPageBreak(6); // Verificar espacio antes de cada variante
-            doc.text(`  • ${variante.color}`, colProducto, y);
-            doc.text(variante.cantidadPedida.toString(), colPedida, y, { align: 'right' });
+            checkPageBreak(6);
+
+            // Color
+            doc.text(`  • ${variante.color}`, MARGEN + 85, y);
+
+            // Cantidad pedida
+            doc.text(variante.cantidadPedida.toString(), MARGEN + 130, y, { align: 'right' });
+
+            // Cantidad preparada
             doc.setFont(undefined, 'bold');
-            doc.text(variante.cantidadPreparada.toString(), colPreparada, y, { align: 'right' });
+            doc.text(variante.cantidadPreparada.toString(), ANCHO_PAGINA - MARGEN, y, { align: 'right' });
             doc.setFont(undefined, 'normal');
+
             y += 5;
           });
         } else {
           // Sin variantes
-          doc.text(producto.cantidadPedida.toString(), colPedida, y - 5, { align: 'right' });
+          doc.text(producto.cantidadPedida.toString(), MARGEN + 130, y - 5, { align: 'right' });
           doc.setFont(undefined, 'bold');
-          doc.text(producto.cantidadPreparada.toString(), colPreparada, y - 5, { align: 'right' });
+          doc.text(producto.cantidadPreparada.toString(), ANCHO_PAGINA - MARGEN, y - 5, { align: 'right' });
           doc.setFont(undefined, 'normal');
         }
 
         // Comentario del producto
-        if (producto.comentarioProducto) {
+        if (producto.comentarioProducto && producto.comentarioProducto.trim() !== '') {
           checkPageBreak(6);
           doc.setTextColor(100, 100, 100);
           doc.setFontSize(7);
-          doc.text(`    >> ${producto.comentarioProducto.toUpperCase()}`, colProducto, y);
+          doc.text(`    >> ${producto.comentarioProducto.toUpperCase()}`, MARGEN + 30, y);
           doc.setTextColor(0, 0, 0);
           doc.setFontSize(8);
           y += 5;
         }
 
+        // Espacio entre productos
         y += 3;
       });
 
+      // Línea separadora final
+      checkPageBreak(20);
+      y += 5;
+      doc.setLineWidth(0.5);
+      doc.line(MARGEN, y, ANCHO_PAGINA - MARGEN, y);
+      y += 10;
+
       // Comentario final
-      if (pedidoSeleccionado.comentarioFinal) {
-        y += 5;
+      if (pedidoSeleccionado.comentarioFinal && pedidoSeleccionado.comentarioFinal.trim() !== '') {
+        checkPageBreak(15);
         doc.setFontSize(10);
         doc.setFont(undefined, 'bold');
         doc.text('Observaciones:', MARGEN, y);
         y += 6;
         doc.setFont(undefined, 'normal');
         doc.setFontSize(9);
+
+        // Dividir texto largo en múltiples líneas
         const comentarioLineas = doc.splitTextToSize(
           pedidoSeleccionado.comentarioFinal,
           ANCHO_PAGINA - 2 * MARGEN
         );
+
         comentarioLineas.forEach((linea: string) => {
+          checkPageBreak(6);
           doc.text(linea, MARGEN, y);
           y += 5;
         });
+
+        y += 5;
       }
 
       // Footer
