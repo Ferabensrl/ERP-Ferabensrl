@@ -271,6 +271,10 @@ const convertirPedidoDeSupabase = async (dbPedido: DbPedido, dbItems: DbPedidoIt
       // Producto normal sin variantes (incluye 'Surtido')
       producto.cantidadPedida += item.cantidad_pedida;
       producto.cantidadPreparada += item.cantidad_preparada;
+      // ✅ CORRECCIÓN: Actualizar el estado del producto surtido
+      if (item.estado && item.estado !== 'pendiente') {
+        producto.estado = item.estado as 'pendiente' | 'completado' | 'sin_stock';
+      }
     }
   });
 
@@ -539,7 +543,8 @@ const Pedidos: React.FC<PedidosProps> = ({
               cantidadPreparada: 0,
               precio: item.precio_unitario,
               estado: 'pendiente' as const,
-              variantes: []
+              variantes: [],
+              comentarioProducto: item.comentarios || ''
             });
           }
 
@@ -1577,9 +1582,9 @@ const Pedidos: React.FC<PedidosProps> = ({
                       <span key={producto.id}>
                         {producto.nombre} ({producto.cantidadPedida})
                         {/* ✅ MOSTRAR comentario en vista lista */}
-                        {producto.comentario && (
+                        {producto.comentarioProducto && (
                           <span style={{ color: '#059669', fontSize: '12px', fontStyle: 'italic' }}>
-                            {' '}💬{producto.comentario}
+                            {' '}💬{producto.comentarioProducto}
                           </span>
                         )}
                         {pedido.productos.indexOf(producto) === 0 && pedido.productos.length > 1 ? ', ' : ''}
@@ -1771,9 +1776,9 @@ const Pedidos: React.FC<PedidosProps> = ({
                   <p>{producto.nombre}</p>
                   <p>Código: {producto.codigo}</p>
                   {/* ✅ MOSTRAR comentario si existe */}
-                  {producto.comentario && (
+                  {producto.comentarioProducto && (
                     <p style={{ fontSize: '14px', color: '#059669', fontStyle: 'italic' }}>
-                      💬 {producto.comentario}
+                      💬 {producto.comentarioProducto}
                     </p>
                   )}
                 </div>
@@ -1845,17 +1850,17 @@ const Pedidos: React.FC<PedidosProps> = ({
                           // ✅ EDITAR COMENTARIO/VARIANTES del producto
                           const nuevoComentario = prompt(
                             `Editar comentario para ${producto.nombre}:\n(ej: 3 negro, 2 azul, 1 rojo)`,
-                            producto.comentario || ''
+                            producto.comentarioProducto || ''
                           );
-                          
+
                           if (nuevoComentario !== null) {
                             const pedidoActualizado = {
                               ...pedidoSeleccionado,
-                              productos: pedidoSeleccionado.productos.map(p => 
-                                p.id === producto.id ? { ...p, comentario: nuevoComentario } : p
+                              productos: pedidoSeleccionado.productos.map(p =>
+                                p.id === producto.id ? { ...p, comentarioProducto: nuevoComentario } : p
                               )
                             };
-                            setPedidos(prev => prev.map(p => 
+                            setPedidos(prev => prev.map(p =>
                               p.id === pedidoSeleccionado.id ? pedidoActualizado : p
                             ));
                             setPedidoSeleccionado(pedidoActualizado);
@@ -2261,7 +2266,7 @@ const Pedidos: React.FC<PedidosProps> = ({
                       </p>
                     )}
                     <p style={{ fontSize: '12px', color: '#9ca3af' }}>
-                      {tieneVariantes ? '🎨 Producto con variantes de color' : '📋 Producto estándar'}
+                      {tieneVariantes ? '🎨 Producto con variantes de color' : '📋 Producto surtido'}
                     </p>
                   </div>
 
@@ -2269,12 +2274,12 @@ const Pedidos: React.FC<PedidosProps> = ({
                     fontSize: '12px',
                     padding: '6px 12px',
                     borderRadius: '8px',
-                    backgroundColor: tieneVariantes ? '#dbeafe' : '#ede9fe',
-                    color: tieneVariantes ? '#1e40af' : '#7c3aed',
-                    border: `2px solid ${tieneVariantes ? '#3b82f6' : '#8b5cf6'}`,
+                    backgroundColor: pedidoSeleccionado.esDeWhatsApp ? '#dcfce7' : '#dbeafe',
+                    color: pedidoSeleccionado.esDeWhatsApp ? '#166534' : '#1e40af',
+                    border: `2px solid ${pedidoSeleccionado.esDeWhatsApp ? '#22c55e' : '#3b82f6'}`,
                     fontWeight: '600'
                   }}>
-                    {tieneVariantes ? '📱 WhatsApp' : '📋 Estándar'}
+                    {pedidoSeleccionado.esDeWhatsApp ? '📱 WhatsApp' : '🛒 Catálogo'}
                   </div>
                 </div>
 
