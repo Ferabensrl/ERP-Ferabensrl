@@ -2195,6 +2195,50 @@ const Pedidos: React.FC<PedidosProps> = ({
           </div>
         </div>
 
+        {/* 🎯 BOTÓN FLOTANTE DE PROGRESO - RESPONSIVE */}
+        <div style={{
+          position: 'fixed',
+          bottom: 'clamp(15px, 3vw, 30px)',
+          right: 'clamp(15px, 3vw, 30px)',
+          width: 'clamp(60px, 10vw, 80px)',
+          height: 'clamp(60px, 10vw, 80px)',
+          borderRadius: '50%',
+          background: progreso === 100 ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' :
+                      progreso >= 50 ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' :
+                      'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          zIndex: 1000,
+          transition: 'all 0.3s ease',
+          animation: 'pulse 2s infinite'
+        }}
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        title="Click para volver arriba"
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'scale(1.1)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+        }}
+        >
+          <div style={{ fontSize: 'clamp(18px, 3vw, 24px)', marginBottom: '2px' }}>
+            {progreso}%
+          </div>
+          <div style={{
+            fontSize: 'clamp(8px, 1.5vw, 10px)',
+            opacity: 0.9,
+            display: window.innerWidth < 500 ? 'none' : 'block'
+          }}>
+            {progreso === 100 ? '✅' : `${totalItems - completados - sinStock} rest.`}
+          </div>
+        </div>
+
         {/* Lista de productos CON SEPARACIÓN VISUAL MEJORADA */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {productosEditables.map((producto, index) => {
