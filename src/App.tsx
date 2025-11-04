@@ -128,35 +128,36 @@ function App() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#FAF6F1' }}>
       {/* Header */}
-      <header style={{ 
-        backgroundColor: '#2563eb', 
-        color: 'white', 
+      <header style={{
+        background: 'linear-gradient(135deg, #C8B5A0 0%, #E3D4C1 100%)',
+        color: '#5a4a3a',
         padding: '16px',
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
       }}>
-        <div style={{ 
-          maxWidth: '1200px', 
-          margin: '0 auto', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between' 
+        <div style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Package size={32} style={{ color: '#bfdbfe' }} />
+            <Package size={32} style={{ color: '#8a7a6a' }} />
             <div>
               <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Feraben SRL</h1>
-              <p style={{ color: '#bfdbfe', fontSize: '14px', margin: 0 }}>Sistema de Inventario y Facturación</p>
+              <p style={{ color: '#8a7a6a', fontSize: '14px', margin: 0 }}>Sistema de Inventario y Facturación</p>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{ fontSize: '14px' }}>Fernando</span>
-            <span style={{ 
-              fontSize: '12px', 
-              backgroundColor: '#3b82f6', 
-              padding: '4px 12px', 
-              borderRadius: '9999px' 
+            <span style={{
+              fontSize: '12px',
+              backgroundColor: '#8a7a6a',
+              color: 'white',
+              padding: '4px 12px',
+              borderRadius: '9999px'
             }}>Admin</span>
           </div>
         </div>
@@ -263,8 +264,8 @@ const NavButton: React.FC<NavButtonProps> = ({ icon, text, active, onClick, badg
       padding: '12px 20px',
       border: 'none',
       backgroundColor: 'transparent',
-      borderBottom: active ? '3px solid #2563eb' : '3px solid transparent',
-      color: active ? '#2563eb' : '#6b7280',
+      borderBottom: active ? '3px solid #8a7a6a' : '3px solid transparent',
+      color: active ? '#8a7a6a' : '#6b7280',
       cursor: 'pointer',
       minWidth: '100px',
       position: 'relative',
