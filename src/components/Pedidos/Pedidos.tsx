@@ -373,7 +373,7 @@ const Pedidos: React.FC<PedidosProps> = ({
       const { data: pedidosData, error: pedidosError } = await supabase
         .from('pedidos')
         .select('*')
-        .in('estado', ['pendiente', 'preparando'])
+        .in('estado', ['pendiente', 'preparando', 'completado'])
         .order('fecha_pedido', { ascending: false });
 
       if (pedidosError) {
@@ -622,11 +622,16 @@ const Pedidos: React.FC<PedidosProps> = ({
 
     try {
       console.log('💾 Guardando progreso completo en Supabase...');
-      
-      // 1. Guardar en localStorage (backup local)
+
+      // 1. Calcular progreso para determinar el estado
+      const progreso = calcularProgreso(productosEditables);
+      const nuevoEstado = progreso === 100 ? 'completado' : 'preparando';
+      console.log(`📊 Progreso: ${progreso}% - Nuevo estado: ${nuevoEstado}`);
+
+      // 2. Guardar en localStorage (backup local)
       guardarProgreso(pedidoSeleccionado.id, productosEditables, comentarios);
 
-      // 2. ✅ NUEVO: Preparar datos para Supabase
+      // 3. ✅ NUEVO: Preparar datos para Supabase
       const itemsParaActualizar: Array<{
         codigo_producto: string;
         cantidad_preparada: number;
@@ -656,46 +661,68 @@ const Pedidos: React.FC<PedidosProps> = ({
         }
       });
 
-      // 3. ✅ ACTUALIZAR EN SUPABASE (no solo estado, sino TODO el progreso)
+      // 4. ✅ ACTUALIZAR EN SUPABASE CON ESTADO CORRECTO
       if (pedidoSeleccionado.esDeWhatsApp || parseInt(pedidoSeleccionado.id) > 0) {
-        await pedidosService.actualizarProgresoPreparacion(
-          parseInt(pedidoSeleccionado.id),
-          comentarios,
-          itemsParaActualizar
-        );
-        console.log('✅ Progreso guardado en Supabase exitosamente');
+        // Si está al 100%, marcar como completado
+        if (nuevoEstado === 'completado') {
+          await pedidosService.finalizarPedidoCompleto(
+            parseInt(pedidoSeleccionado.id),
+            comentarios.trim(),
+            itemsParaActualizar
+          );
+          console.log('✅ Pedido completado automáticamente en Supabase (100%)');
+        } else {
+          await pedidosService.actualizarProgresoPreparacion(
+            parseInt(pedidoSeleccionado.id),
+            comentarios,
+            itemsParaActualizar
+          );
+          console.log('✅ Progreso guardado en Supabase');
+        }
       }
 
-      // 4. Actualizar estado en memoria
+      // 5. Actualizar estado en memoria
       setPedidos(pedidos =>
         pedidos.map(p =>
           p.id === pedidoSeleccionado.id
-            ? { ...p, estado: 'preparando' }
+            ? { ...p, estado: nuevoEstado }
             : p
         )
       );
 
-      // 5. Volver al dashboard
+      // 6. Volver al dashboard
       if (onVolverDashboard) {
         onVolverDashboard();
       } else {
         setVistaActual('lista');
       }
 
-      alert('✅ PROGRESO GUARDADO COMPLETAMENTE\n\n' +
-            '💾 Local: Guardado en el dispositivo\n' +
-            '☁️ Supabase: Sincronizado en la nube\n\n' +
-            '✅ VISIBLE EN CUALQUIER DISPOSITIVO\n' +
-            'Puedes continuar desde cualquier tablet/computadora');
+      // 7. Mostrar mensaje según el estado
+      if (nuevoEstado === 'completado') {
+        alert('✅ PEDIDO COMPLETADO (100%)\n\n' +
+              '🎉 El pedido está listo para revisión\n' +
+              '💾 Local: Guardado en el dispositivo\n' +
+              '☁️ Supabase: Marcado como COMPLETADO\n\n' +
+              '✅ Visible en el contador de "Completados"');
+      } else {
+        alert(`💾 PROGRESO GUARDADO (${progreso}%)\n\n` +
+              '💾 Local: Guardado en el dispositivo\n' +
+              '☁️ Supabase: Sincronizado en la nube\n\n' +
+              '✅ VISIBLE EN CUALQUIER DISPOSITIVO\n' +
+              'Puedes continuar desde cualquier tablet/computadora');
+      }
 
     } catch (error) {
       console.error('❌ Error guardando progreso:', error);
-      
+
       // Fallback: al menos guardar localmente
+      const progreso = calcularProgreso(productosEditables);
+      const nuevoEstado = progreso === 100 ? 'completado' : 'preparando';
+
       setPedidos(pedidos =>
         pedidos.map(p =>
           p.id === pedidoSeleccionado.id
-            ? { ...p, estado: 'preparando' }
+            ? { ...p, estado: nuevoEstado }
             : p
         )
       );
@@ -873,6 +900,46 @@ const Pedidos: React.FC<PedidosProps> = ({
     });
 
     return totalItems > 0 ? Math.round((completados / totalItems) * 100) : 0;
+  };
+
+  // ✅ NUEVA FUNCIÓN: Enviar a facturación pedido ya completado
+  const enviarAFacturacion = async (pedido: Pedido) => {
+    try {
+      console.log('🚀 Enviando pedido a facturación:', pedido.numero);
+
+      // Confirmar acción
+      const confirmar = window.confirm(
+        `🚀 ENVIAR A FACTURACIÓN\n\n` +
+        `📋 Pedido: ${pedido.numero}\n` +
+        `👤 Cliente: ${pedido.cliente.nombre}\n` +
+        `💰 Total: $${pedido.total?.toLocaleString() || '0'}\n\n` +
+        `¿Confirmar envío a facturación?`
+      );
+
+      if (!confirmar) return;
+
+      // Ya está marcado como completado en Supabase
+      // Solo notificar al usuario
+      alert(
+        `✅ PEDIDO ENVIADO A FACTURACIÓN\n\n` +
+        `📋 ${pedido.numero}\n` +
+        `👤 ${pedido.cliente.nombre}\n` +
+        `💰 Total: $${pedido.total?.toLocaleString() || '0'}\n\n` +
+        `🚀 El pedido ya está disponible en el módulo de facturación\n` +
+        `☁️ Todos los datos están sincronizados en Supabase`
+      );
+
+      // Opcional: Recargar pedidos para refrescar la lista
+      const pedidosDeSupabase = await cargarPedidosDeSupabase();
+      const pedidosWhatsAppMarcados = pedidosWhatsApp.map(p => ({ ...p, esDeWhatsApp: true }));
+      const todosPedidos = [...pedidosDeSupabase, ...pedidosWhatsAppMarcados, ...pedidosEjemplo];
+      const pedidosUnicos = Array.from(new Map(todosPedidos.map(p => [p.id, p])).values());
+      setPedidos(pedidosUnicos);
+
+    } catch (error) {
+      console.error('❌ Error enviando a facturación:', error);
+      alert('❌ Error al enviar a facturación. Por favor intenta nuevamente.');
+    }
   };
 
   // ✅ FUNCIÓN COMPLETAMENTE CORREGIDA: Finalizar pedido CON INTEGRACIÓN DE INVENTARIO
@@ -1566,12 +1633,12 @@ const Pedidos: React.FC<PedidosProps> = ({
                     {pedido.productos.length} productos • {pedido.productos.reduce((sum, p) => sum + p.cantidadPedida, 0)} unidades
                   </p>
 
-                  {(pedido.estado === 'preparando' || (pedido.estado === 'pendiente' && progreso > 0)) && (
+                  {(pedido.estado === 'preparando' || pedido.estado === 'completado' || (pedido.estado === 'pendiente' && progreso > 0)) && (
                     <>
                       <div className={styles.progressBarContainer}>
                         <div className={styles.progressBar} style={{ width: `${progreso}%` }} />
                       </div>
-                      <p style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0 0' }}>
+                      <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0 0 0', fontWeight: '700' }}>
                         {progreso}% completado
                       </p>
                     </>
@@ -1630,20 +1697,34 @@ const Pedidos: React.FC<PedidosProps> = ({
                   )}
 
                   {pedido.estado === 'completado' && (
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '8px 12px',
-                      backgroundColor: '#dcfce7',
-                      borderRadius: '6px',
-                      border: '1px solid #22c55e'
-                    }}>
-                      <CheckCircle size={16} style={{ color: '#166534' }} />
-                      <span style={{ fontSize: '12px', color: '#166534', fontWeight: '600' }}>
-                        Listo para Facturación
-                      </span>
-                    </div>
+                    <button
+                      onClick={() => enviarAFacturacion(pedido)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '8px 12px',
+                        backgroundColor: '#22c55e',
+                        borderRadius: '6px',
+                        border: '1px solid #16a34a',
+                        color: 'white',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#16a34a';
+                        e.currentTarget.style.transform = 'scale(1.02)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#22c55e';
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }}
+                    >
+                      <CheckCircle size={16} />
+                      🚀 Enviar a Facturación
+                    </button>
                   )}
 
                   {/* ✅ NUEVO: Botón eliminar - disponible para todos los estados */}
